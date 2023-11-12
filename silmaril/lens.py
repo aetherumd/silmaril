@@ -150,7 +150,7 @@ class Lens():
         :return: list of traced points
         :rtype: numpy.ndarray
         """
-        
+        # compute deflection angle scale factor
         scale_factor = deflection_angle_scale_factor(self.redshift,source_redshift)
 
         # convert coordinate grids into list of points
