@@ -83,10 +83,10 @@ class Detector():
         self.psf = psf
 
 class Observation():
-    def __init__(detector,lens,galaxy,noise,background_level):
-        pass
+    def __init__(self,detector,lens,galaxy):
+        self.detector, self.lens, self.galaxy = detector, lens, galaxy
 
-    def observe():
+    def observe(noise,background_level):
         pass
 
     def plot(center,angle):

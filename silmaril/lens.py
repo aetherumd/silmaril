@@ -1,5 +1,6 @@
 from astropy.wcs.utils import proj_plane_pixel_scales
 from astropy.cosmology import FlatLambdaCDM
+from astropy.coordinates import SkyCoord
 from scipy.ndimage import map_coordinates
 from utilities import *
 
@@ -73,7 +74,7 @@ class Lens():
 
         return abs(1-0.5*(dxdx+dydy))
 
-    def magnification_line(self,grid,source_redshift,threshold=500):
+    def magnification_line(self,grid,source_redshift,threshold=500,coordinates="world"):
         """
         Returns a list of points in the image plane with magnification greater than a given threshold.
 
@@ -90,7 +91,7 @@ class Lens():
         image_plane_points = grid.as_list_of_points()
         return image_plane_points[image_plane_magnification.flatten() > threshold]
 
-    def caustic(self,image_plane_grid,source_redshift,threshold=500):
+    def caustic(self,image_plane_grid,source_redshift,threshold=500,source_plane_grid=None,coordinates="world"):
         """
         Returns a list of points on the source plane corresponding to the caustic of the lensing cluster.
         The caustic is computed by ray tracing the points on the magnification line back to the source plane.
@@ -140,7 +141,7 @@ class Lens():
 
         return traced_points_x, traced_points_y
 
-    def trace_points(self,points,source_redshift):
+    def trace_points(self,points,source_redshift,coordinates="world"):
         """
         Ray trace a set of points from the image plane back to the source plane at a given redshift.
         
@@ -153,12 +154,15 @@ class Lens():
         # compute deflection angle scale factor
         scale_factor = deflection_angle_scale_factor(self.redshift,source_redshift)
 
-        # convert coordinate grids into list of points
+        # convert to list of points in pixel coordinates
         image_plane_points_pix = self.wcs.all_world2pix(points,0,ra_dec_order=True)
 
         # perform ray tracing by interpolating deflection angles
         traced_points_x = image_plane_points_pix[:,0] - scale_factor*map_coordinates(self.x_deflections, np.flip(image_plane_points_pix.T,axis=0), order=1)
         traced_points_y = image_plane_points_pix[:,1] - scale_factor*map_coordinates(self.y_deflections, np.flip(image_plane_points_pix.T,axis=0), order=1)
+
+        # convert back to world coordinates after ray tracing
+        traced_points_x, traced_points_y = self.wcs.all_pix2world(traced_points_x,traced_points_y,0,ra_dec_order=True)
 
         return np.concatenate((traced_points_x,traced_points_y),axis=1)
 
