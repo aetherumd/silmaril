@@ -1,10 +1,10 @@
 import numpy as np
 import numpy as np
 import pandas as pd
-import os
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 from astropy.cosmology import FlatLambdaCDM
 from imaging import Grid
-
 
 class Galaxy():
     def __init__(self,filename,redshift,size):
@@ -30,13 +30,13 @@ class Galaxy():
         """
         return (2*self.angular_size)/resolution*zoom_factor
     
-    def grid(self,resolution,center,zoom_factor=1):
+    def grid(self,center,resolution,zoom_factor=1):
         """
         Returns a grid of points on the sky at a given resolution and zoom factor.
         """
         return Grid(center,resolution,self.pixel_scale(resolution,zoom_factor))
 
-    def as_array(self, resolution, zoom_factor=1):
+    def create_image(self, resolution, zoom_factor=1):
         """
         Returns an image of the galaxy as a 2d array of fluxes in Jy.
 
@@ -60,7 +60,7 @@ class Galaxy():
                 column_idx=1,
                 log=True,
             ),
-            self.luminosity_distance,
+            self.luminosity_distance
         )
 
         lums, xedges, yedges = np.histogram2d(
@@ -72,6 +72,22 @@ class Galaxy():
         )
 
         return lums.T*zoom_factor
+    
+    def plot(self,resolution,center=None,norm=None,zoom_factor=1):
+        """
+        Plots the galaxy at a given resolution and zoom factor.
+        """
+        if center is not None: 
+            wcs = self.grid(resolution,center,zoom_factor).wcs
+        if norm is None:
+            norm = LogNorm()
+            
+        fig, ax = plt.subplot(projection=wcs) if center is not None else plt.subplots(1,1)
+        im = ax.imshow(self.create_image(resolution,zoom_factor),cmap="inferno",norm=norm)
+        ax.set_facecolor("black")
+        fig.colorbar(im)
+
+        return fig, ax
 
 
 def lum_to_appmag_ab(lum, lum_dist, redshft):
@@ -87,7 +103,15 @@ def lum_to_appmag_ab(lum, lum_dist, redshft):
 
 def ang_size(phys_size, redshift):
     """
-    angsize in arcesconds
+    Computes angular size in arcseconds given physical size in pc and redshift
+
+    :param phys_size: physical size in pc
+    :type phys_size: float
+    :param redshift: redshift
+    :type redshift: float
+
+    :return: angular size in arcseconds
+    :rtype: float
     """
 
     # compute luminosity distance in pc
@@ -145,5 +169,5 @@ def lum_look_up_table(stellar_ages, table_link, column_idx: int, log=True):
         closest_age_idx = np.argmin(np.abs(look_up_times - a))
         ages_mask[i] = closest_age_idx
     luminosities = look_up_lumi[np.array(ages_mask, dtype="int")]
-    
+
     return luminosities

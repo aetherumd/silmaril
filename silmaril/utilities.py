@@ -5,7 +5,7 @@ from astropy.io import fits
 def open_fits(file_name):
     return fits.open(file_name)[0].data
 
-def transform_image(image,angle,center,pixel_scale):
+def transform_image(image,pixel_scale,angle=0,center=(0,0)):
     """
     Rotates and shifts an image.
 
