@@ -6,11 +6,23 @@ from matplotlib.colors import LogNorm
 from astropy.cosmology import FlatLambdaCDM
 from imaging import Grid
 
-class Galaxy():
-    def __init__(self,filename,center,redshift,size):
+
+class Galaxy:
+    def __init__(self, filename, center, redshift, size):
         # load particle data
         self.data = np.loadtxt(filename)
-        self.data_columns = ["ID", "CurrentAges[MYr]", "X[pc]",	"Y[pc]", "Z[pc]", "mass[Msun]", "t_sim[Myr]", "z", "ctr(code)", "ctr(pc)"]
+        self.data_columns = [
+            "ID",
+            "CurrentAges[MYr]",
+            "X[pc]",
+            "Y[pc]",
+            "Z[pc]",
+            "mass[Msun]",
+            "t_sim[Myr]",
+            "z",
+            "ctr(code)",
+            "ctr(pc)",
+        ]
         self.center = center
         self.redshift = redshift
         self.size = size
@@ -18,9 +30,9 @@ class Galaxy():
 
         # compute luminosity distance in pc
         cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
-        self.luminosity_distance = cosmo.luminosity_distance(redshift).value*1e6
-    
-    def pixel_scale(self,resolution, zoom_factor=1):
+        self.luminosity_distance = cosmo.luminosity_distance(redshift).value * 1e6
+
+    def pixel_scale(self, resolution, zoom_factor=1):
         """
         Computes the pixel scale of an image of the galaxy at a given resolution and zoom factor.
 
@@ -29,13 +41,13 @@ class Galaxy():
         :param zoom_factor: zoom factor of the image, defaults to 1
         :type zoom_factor: float, optional
         """
-        return (2*self.angular_size)/resolution*zoom_factor
-    
-    def grid(self,resolution,zoom_factor=1):
+        return (2 * self.angular_size) / resolution * zoom_factor
+
+    def grid(self, resolution, zoom_factor=1):
         """
         Returns a grid of points on the sky at a given resolution and zoom factor.
         """
-        return Grid(self.center,resolution,self.pixel_scale(resolution,zoom_factor))
+        return Grid(self.center, resolution, self.pixel_scale(resolution, zoom_factor))
 
     def create_image(self, resolution, zoom_factor=1):
         """
@@ -61,7 +73,7 @@ class Galaxy():
                 column_idx=1,
                 log=True,
             ),
-            self.luminosity_distance
+            self.luminosity_distance,
         )
 
         lums, xedges, yedges = np.histogram2d(
@@ -69,23 +81,28 @@ class Galaxy():
             y_viewed,
             bins=resolution,
             weights=flux,
-            range=[[-self.angular_size, self.angular_size], [-self.angular_size, self.angular_size]],
+            range=[
+                [-self.angular_size, self.angular_size],
+                [-self.angular_size, self.angular_size],
+            ],
         )
 
-        return lums.T*zoom_factor
-    
-    def plot(self,resolution,norm=None,zoom_factor=1):
+        return lums.T * zoom_factor
+
+    def plot(self, resolution, norm=None, zoom_factor=1):
         """
         Plots the galaxy at a given resolution and zoom factor.
         """
-        wcs = self.grid(resolution,zoom_factor).wcs
+        wcs = self.grid(resolution, zoom_factor).wcs
 
         if norm is None:
             norm = LogNorm()
 
         fig = plt.figure()
         ax = fig.add_subplot(projection=wcs)
-        im = ax.imshow(self.create_image(resolution,zoom_factor),cmap="inferno",norm=norm)
+        im = ax.imshow(
+            self.create_image(resolution, zoom_factor), cmap="inferno", norm=norm
+        )
         ax.set_facecolor("black")
         ra = ax.coords["ra"]
         ra.set_ticklabel(exclude_overlapping=True)
@@ -122,7 +139,7 @@ def ang_size(phys_size, redshift):
 
     # compute luminosity distance in pc
     cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
-    lum_dist = cosmo.luminosity_distance(redshift).value*1e6
+    lum_dist = cosmo.luminosity_distance(redshift).value * 1e6
     size_dist = lum_dist / (1 + redshift) ** 2
     return (phys_size / size_dist) * (2.06e5)
 
@@ -132,6 +149,7 @@ def zshifted_flux_jy(lum, lum_dis, wav_angs=1500):
     need lum distance in parsecs
     """
     return 7.5e11 * (wav_angs / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
+
 
 def lum_look_up_table(stellar_ages, table_link, column_idx: int, log=True):
     """
