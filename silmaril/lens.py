@@ -164,7 +164,7 @@ class Lens():
         # convert back to world coordinates after ray tracing
         traced_points_x, traced_points_y = self.wcs.all_pix2world(traced_points_x,traced_points_y,0,ra_dec_order=True)
 
-        return np.concatenate((traced_points_x,traced_points_y),axis=1)
+        return np.concatenate((traced_points_x,traced_points_y))
 
 def deflection_angle_scale_factor(z1,z2,H0=70,Om0=0.3):
     """

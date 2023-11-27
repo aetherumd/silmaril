@@ -7,10 +7,11 @@ from astropy.cosmology import FlatLambdaCDM
 from imaging import Grid
 
 class Galaxy():
-    def __init__(self,filename,redshift,size):
+    def __init__(self,filename,center,redshift,size):
         # load particle data
         self.data = np.loadtxt(filename)
         self.data_columns = ["ID", "CurrentAges[MYr]", "X[pc]",	"Y[pc]", "Z[pc]", "mass[Msun]", "t_sim[Myr]", "z", "ctr(code)", "ctr(pc)"]
+        self.center = center
         self.redshift = redshift
         self.size = size
         self.angular_size = ang_size(self.size, self.redshift)
@@ -30,11 +31,11 @@ class Galaxy():
         """
         return (2*self.angular_size)/resolution*zoom_factor
     
-    def grid(self,center,resolution,zoom_factor=1):
+    def grid(self,resolution,zoom_factor=1):
         """
         Returns a grid of points on the sky at a given resolution and zoom factor.
         """
-        return Grid(center,resolution,self.pixel_scale(resolution,zoom_factor))
+        return Grid(self.center,resolution,self.pixel_scale(resolution,zoom_factor))
 
     def create_image(self, resolution, zoom_factor=1):
         """
@@ -73,18 +74,23 @@ class Galaxy():
 
         return lums.T*zoom_factor
     
-    def plot(self,resolution,center=None,norm=None,zoom_factor=1):
+    def plot(self,resolution,norm=None,zoom_factor=1):
         """
         Plots the galaxy at a given resolution and zoom factor.
         """
-        if center is not None: 
-            wcs = self.grid(resolution,center,zoom_factor).wcs
+        wcs = self.grid(resolution,zoom_factor).wcs
+
         if norm is None:
             norm = LogNorm()
-            
-        fig, ax = plt.subplot(projection=wcs) if center is not None else plt.subplots(1,1)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(projection=wcs)
         im = ax.imshow(self.create_image(resolution,zoom_factor),cmap="inferno",norm=norm)
         ax.set_facecolor("black")
+        ra = ax.coords["ra"]
+        ra.set_ticklabel(exclude_overlapping=True)
+        ra.set_format_unit("deg")
+        # ax.coords.grid(color='white', alpha=0.5, linestyle='solid')
         fig.colorbar(im)
 
         return fig, ax
