@@ -11,24 +11,35 @@ from scipy.ndimage import gaussian_filter
 
 
 class Grid:
-    """
-    Grid of points on the sky.
+    """Grid of points on the sky.
 
-    :param center: Coordinates of the center of the grid
-    :type center: astropy.coordinates.SkyCoord
-    :param num_pix: number of pixels on each side of the grid
-    :type num_pix: int
-    :param scale: pixel scale of the grid in arcseconds
-    :type scale: float
+    Parameters
+    ----------
+    center : astropy.coordinates.SkyCoord
+        Coordinates of the center of the grid
+    num_pix : int
+        number of pixels on each side of the grid
+    scale : float
+        pixel scale of the grid in arcseconds
 
-    :ivar center: Coordinates of the center of the grid
-    :ivar n: number of pixels on each side of the grid
-    :ivar scale: pixel scale of the grid in arcseconds
-    :ivar fov: field of view of the grid in arcseconds
-    :ivar x: RA coordinates of the grid
-    :ivar y: DEC coordinates of the grid
-    :ivar grid: grid of coordinates in meshgrid format
-    :ivar wcs: astropy.WCS object of the grid
+    Attributes
+    ----------
+    center
+        Coordinates of the center of the grid
+    n
+        number of pixels on each side of the grid
+    scale
+        pixel scale of the grid in arcseconds
+    fov
+        field of view of the grid in arcseconds
+    x
+        RA coordinates of the grid
+    y
+        DEC coordinates of the grid
+    grid
+        grid of coordinates in meshgrid format
+    wcs
+        astropy.WCS object of the grid
     """
 
     def __init__(self, center, num_pix, scale):
@@ -60,44 +71,56 @@ class Grid:
         self.wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
     def as_2d_array(self):
-        """
-        Returns the grid as a 2d array of (ra,dec) coordinate pairs.
+        """Returns the grid as a 2d array of (ra,dec) coordinate pairs.
 
-        :return: array of shape (n,n,2)
-        :rtype: numpy.ndarray
+        Returns
+        -------
+        numpy.ndarray
+            array of shape (n,n,2)
         """
         return np.transpose(self.grid, (1, 2, 0))
 
     def as_list_of_points(self):
-        """
-        Flattens the grid into a list of (ra,dec) coordinate pairs.
+        """Flattens the grid into a list of (ra,dec) coordinate pairs.
 
-        :return: array of shape (n^2,2)
-        :rtype: numpy.ndarray
+        Returns
+        -------
+        numpy.ndarray
+            array of shape (n^2,2)
         """
         return np.reshape(self.as_2d_array(), (-1, 2))
 
 
 class Detector:
-    """
-    Class representing a detector.
+    """Class representing a detector.
 
-    :param resolution: Resolution of the detector in arcseconds per pixel
-    :type resolution: float
-    :param fov: Field of view of the detector in arcseconds
-    :type fov: float
-    :param center: Coordinates of the center of the image
-    :type center: astropy.coordinates.SkyCoord
-    :param psf: Point spread function of the detector
-    :type psf: np.ndarray
+    Parameters
+    ----------
+    resolution : float
+        Resolution of the detector in arcseconds per pixel
+    fov : float
+        Field of view of the detector in arcseconds
+    center : astropy.coordinates.SkyCoord
+        Coordinates of the center of the image
+    psf : np.ndarray
+        Point spread function of the detector
 
-    :ivar resolution: Resolution of the detector in arcseconds per pixel
-    :ivar fov: Field of view of the detector in arcseconds
-    :ivar center: Coordinates of the center of the image
-    :ivar psf: Point spread function of the detector
-    :ivar num_pix: Number of pixels on each side of the image
-    :ivar grid: Grid of coordinates of the image plane
-    :ivar wcs: astropy.WCS object of the image plane grid
+    Attributes
+    ----------
+    resolution
+        Resolution of the detector in arcseconds per pixel
+    fov
+        Field of view of the detector in arcseconds
+    center
+        Coordinates of the center of the image
+    psf
+        Point spread function of the detector
+    num_pix
+        Number of pixels on each side of the image
+    grid
+        Grid of coordinates of the image plane
+    wcs
+        astropy.WCS object of the image plane grid
     """
 
     def __init__(self, resolution, fov, center, psf_fwhm):
@@ -111,20 +134,28 @@ class Detector:
 
 
 class Observation:
-    """
-    Class representing an observation of a lensed galaxy using a detector
+    """Class representing an observation of a lensed galaxy using a detector
 
-    :param detector: detector used to take the observation
-    :type detector: Detector
-    :param lens: lensing cluster
-    :type lens: Lens
-    :param galaxy: source galaxy
-    :type galaxy: Galaxy
+    Parameters
+    ----------
+    detector : Detector
+        detector used to take the observation
+    lens : Lens
+        lensing cluster
+    galaxy : Galaxy
+        source galaxy
 
-    :ivar detector: detector used to take the observation
-    :ivar lens: lensing cluster
-    :ivar galaxy: source galaxy
-    :ivar traced_pixel_corners: grid of source plane coordinates of the corners of each pixel on the image plane
+    Attributes
+    ----------
+    detector
+        detector used to take the observation
+    lens
+        lensing cluster
+    galaxy
+        source galaxy
+    traced_pixel_corners
+        grid of source plane coordinates of the corners of each pixel on
+        the image plane
     """
     def __init__(self, detector, lens, galaxy):
         self.detector, self.lens, self.galaxy = detector, lens, galaxy
@@ -147,24 +178,28 @@ class Observation:
         source_rotation=0,
         zoom_factor=1,
     ):
-        """
-        Simulates an observation of the lensed galaxy.
-        
-        :param background: background level of the image
-        :type background: float
-        :param noise: standard deviation of the noise
-        :type noise: float
-        :param source_resolution: number of pixels on each side of the source image
-        :type source_resolution: int
-        :param source_center: coordinate offset in arcseconds of the center of the source image, defaults to (0,0)
-        :type source_center: tuple, optional
-        :param source_rotation: rotation in degrees of the source image, defaults to 0
-        :type source_rotation: float, optional
-        :param zoom_factor: zoom factor of the source image, defaults to 1
-        :type zoom_factor: float, optional
+        """Simulates an observation of the lensed galaxy.
 
-        :return: simulated observation as a 2d array of luminosity values
-        :rtype: numpy.ndarray
+        Parameters
+        ----------
+        background : float
+            background level of the image
+        noise : float
+            standard deviation of the noise
+        source_resolution : int
+            number of pixels on each side of the source image
+        source_center : tuple, optional
+            coordinate offset in arcseconds of the center of the source
+            image, defaults to (0,0)
+        source_rotation : float, optional
+            rotation in degrees of the source image, defaults to 0
+        zoom_factor : float, optional
+            zoom factor of the source image, defaults to 1
+
+        Returns
+        -------
+        numpy.ndarray
+            simulated observation as a 2d array of luminosity values
         """
         # create source image
         galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor)
@@ -200,23 +235,25 @@ class Observation:
         source_rotation=0,
         zoom_factor=1,
     ):
-        """
-        Simulates an observation of the lensed galaxy and saves it to a fits file with WCS information.
+        """Simulates an observation of the lensed galaxy and saves it to a fits file with WCS information.
 
-        :param filename: name of the file to save the observation to
-        :type filename: str
-        :param background: background level of the image
-        :type background: float
-        :param noise: standard deviation of the noise
-        :type noise: float
-        :param source_resolution: number of pixels on each side of the source image
-        :type source_resolution: int
-        :param source_center: coordinate offset in arcseconds of the center of the source image, defaults to (0,0)
-        :type source_center: tuple, optional
-        :param source_rotation: rotation in degrees of the source image, defaults to 0
-        :type source_rotation: float, optional
-        :param zoom_factor: zoom factor of the source image, defaults to 1
-        :type zoom_factor: float, optional
+        Parameters
+        ----------
+        filename : str
+            name of the file to save the observation to
+        background : float
+            background level of the image
+        noise : float
+            standard deviation of the noise
+        source_resolution : int
+            number of pixels on each side of the source image
+        source_center : tuple, optional
+            coordinate offset in arcseconds of the center of the source
+            image, defaults to (0,0)
+        source_rotation : float, optional
+            rotation in degrees of the source image, defaults to 0
+        zoom_factor : float, optional
+            zoom factor of the source image, defaults to 1
         """
         lensed_image = self.simulate_observation(
             background,
@@ -233,9 +270,7 @@ class Observation:
     def trace_pixels(
         self, source_resolution, source_center=(0, 0), source_rotation=0, zoom_factor=1
     ):
-        """
-        
-        """
+        """"""
         # create source image
         galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor)
         galaxy_pixel_scale = self.galaxy.pixel_scale(source_resolution, zoom_factor)
@@ -271,26 +306,30 @@ class Observation:
         zoom_factor=1,
         norm=None,
     ):
-        """
-        Plot the lensed galaxy as seen by the detector.
+        """Plot the lensed galaxy as seen by the detector.
 
-        :param background: background level of the image
-        :type background: float
-        :param noise: standard deviation of the noise
-        :type noise: float
-        :param source_resolution: number of pixels on each side of the source image
-        :type source_resolution: int
-        :param source_center: coordinate offset in arcseconds of the center of the source image, defaults to (0,0)
-        :type source_center: tuple, optional
-        :param source_rotation: rotation in degrees of the source image, defaults to 0
-        :type source_rotation: float, optional
-        :param zoom_factor: zoom factor of the source image, defaults to 1
-        :type zoom_factor: float, optional
-        :param norm: normalization of the image, defaults to None
-        :type norm: matplotlib.colors.Normalize, optional
+        Parameters
+        ----------
+        background : float
+            background level of the image
+        noise : float
+            standard deviation of the noise
+        source_resolution : int
+            number of pixels on each side of the source image
+        source_center : tuple, optional
+            coordinate offset in arcseconds of the center of the source
+            image, defaults to (0,0)
+        source_rotation : float, optional
+            rotation in degrees of the source image, defaults to 0
+        zoom_factor : float, optional
+            zoom factor of the source image, defaults to 1
+        norm : matplotlib.colors.Normalize, optional
+            normalization of the image, defaults to None
 
-        :return: matplotlib figure and axes objects
-        :rtype: tuple(matplotlib.figure.Figure,matplotlib.axes.Axes)
+        Returns
+        -------
+        tuple(matplotlib.figure.Figure,matplotlib.axes.Axes)
+            matplotlib figure and axes objects
         """
         wcs = self.detector.grid.wcs
 
@@ -323,18 +362,23 @@ class Observation:
 
 @jit(nopython=True)
 def nonempty_pixel_indices(traced_pixel_corners, source_x_range, source_y_range):
-    """
-    Returns a list of pixel indices on the image plane corresponding to pixels that fall within the source image when traced back to the source plane.
+    """Returns a list of pixel indices on the image plane corresponding to pixels 
+    that fall within the source image when traced back to the source plane.
 
-    :param traced_corners_grid: grid of source plane coordinates of the corners of each pixel on the image plane
-    :type traced_corners_grid: numpy.ndarray
-    :param source_x_range: min and max x coordinates of the source image
-    :type source_x_range: list
-    :param source_y_range: min and max y coordinates of the source image
-    :type source_y_range: list
+    Parameters
+    ----------
+    traced_corners_grid : numpy.ndarray
+        grid of source plane coordinates of the corners of each pixel on
+        the image plane
+    source_x_range : list
+        min and max x coordinates of the source image
+    source_y_range : list
+        min and max y coordinates of the source image
 
-    :return: list of pixel indices
-    :rtype: np.ndarray
+    Returns
+    -------
+    np.ndarray
+        list of pixel indices
     """
     image_pix = (
         traced_pixel_corners.shape[0] - 1
@@ -359,18 +403,24 @@ def nonempty_pixel_indices(traced_pixel_corners, source_x_range, source_y_range)
 def get_arc_pixels(
     source_grid, traced_pixel_corners, image_plane, nonempty_pixels=None
 ):
-    """
-    Returns the list of pixels on the image plane that fall within the source image when traced back to the source plane.
+    """Returns the list of pixels on the image plane that fall within the source 
+    image when traced back to the source plane.
 
-    :param source_grid: grid of source plane coordinates
-    :type source_grid: numpy.ndarray
-    :param traced_corners_grid: grid of source plane coordinates of the corners of each pixel on the image plane
-    :type traced_corners_grid: numpy.ndarray
-    :param image_grid: grid of image plane coordinates
-    :type image_grid: numpy.ndarray
+    Parameters
+    ----------
+    source_grid : numpy.ndarray
+        grid of source plane coordinates
+    traced_corners_grid : numpy.ndarray
+        grid of source plane coordinates of the corners of each pixel on
+        the image plane
+    image_grid : numpy.ndarray
+        grid of image plane coordinates
 
-    :return: two element tuple consisting of a list of pixel indices and a list of pixel coordinates
-    :rtype: tuple(numpy.ndarray,numpy.ndarray)
+    Returns
+    -------
+    tuple(numpy.ndarray,numpy.ndarray)
+        two element tuple consisting of a list of pixel indices and a
+        list of pixel coordinates
     """
 
     if nonempty_pixels is None:
@@ -390,17 +440,22 @@ def get_arc_pixels(
 
 
 def get_traced_pixels(source_grid, traced_pixel_corners, nonempty_pixels=None):
-    """
-    Returns a list of polygons on the source plane corresponding to pixels on the image plane.
+    """Returns a list of polygons on the source plane corresponding to pixels on the image plane.
     Each polygon is represented as an array of shape (4,2) where each row is a vertex of the polygon.
 
-    :param source_grid: grid of source plane coordinates
-    :type source_grid: Grid
-    :param traced_corners_grid: grid of source plane coordinates of the corners of each pixel on the image plane
-    :type traced_corners_grid: numpy.ndarray
+    Parameters
+    ----------
+    source_grid : Grid
+        grid of source plane coordinates
+    traced_corners_grid : numpy.ndarray
+        grid of source plane coordinates of the corners of each pixel on
+        the image plane
 
-    :return: list of polygons on the source plane as an array of shape (n,4,2)
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    numpy.ndarray
+        list of polygons on the source plane as an array of shape
+        (n,4,2)
     """
     if nonempty_pixels is None:
         source_x_range = [np.min(source_grid.x), np.max(source_grid.x)]
@@ -427,19 +482,23 @@ def get_traced_pixels(source_grid, traced_pixel_corners, nonempty_pixels=None):
 def get_traced_luminosities(
     source_image, source_grid, traced_pixel_corners, nonempty_pixels=None
 ):
-    """
-    Lenses the given source image and returns a 2d array of luminosity values corresponding to
+    """Lenses the given source image and returns a 2d array of luminosity values corresponding to
     pixels on the image plane.
 
-    :param source_image: image of the source
-    :type source_image: numpy.ndarray
-    :param source_grid: grid of source plane coordinates
-    :type source_grid: Grid
-    :param traced_corners_grid: grid of source plane coordinates of the corners of each pixel on the image plane
-    :type traced_corners_grid: numpy.ndarray
+    Parameters
+    ----------
+    source_image : numpy.ndarray
+        image of the source
+    source_grid : Grid
+        grid of source plane coordinates
+    traced_corners_grid : numpy.ndarray
+        grid of source plane coordinates of the corners of each pixel on
+        the image plane
 
-    :return: lensed image
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    numpy.ndarray
+        lensed image
     """
     x = source_grid.x
     y = source_grid.y

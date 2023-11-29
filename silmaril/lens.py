@@ -6,25 +6,35 @@ from utilities import *
 
 
 class Lens:
-    """
-    Class representing a lensing cluster.
+    """Class representing a lensing cluster.
 
-    :param x_deflections: x-component of the deflection angles
-    :type x_deflections: np.ndarray
-    :param y_deflections: y-component of the deflection angles
-    :type y_deflections: np.ndarray
-    :param wcs: WCS object for the deflection angle map
-    :type wcs: astropy.wcs.WCS
-    :param redshift: redshift of the lensing cluster
-    :type redshift: float
+    Parameters
+    ----------
+    x_deflections : np.ndarray
+        x-component of the deflection angles
+    y_deflections : np.ndarray
+        y-component of the deflection angles
+    wcs : astropy.wcs.WCS
+        WCS object for the deflection angle map
+    redshift : float
+        redshift of the lensing cluster
+    unit : str, optional
+
+
     :unit: units of the deflection angles (options are "arcseconds" and "pixels"), defaults to "arcseconds"
-    :type unit: str, optional
 
-    :ivar wcs: WCS object for the deflection angle map
-    :ivar redshift: redshift of the lensing cluster
-    :ivar scale: pixel scale of the deflection angle map
-    :ivar x_deflections: x-component of the deflection angles
-    :ivar y_deflections: y-component of the deflection angles
+    Attributes
+    ----------
+    wcs
+        WCS object for the deflection angle map
+    redshift
+        redshift of the lensing cluster
+    scale
+        pixel scale of the deflection angle map
+    x_deflections
+        x-component of the deflection angles
+    y_deflections
+        y-component of the deflection angles
     """
 
     def __init__(self, x_deflections, y_deflections, wcs, redshift, unit="arcsec"):
@@ -42,16 +52,19 @@ class Lens:
             raise ValueError("unit must be either 'arcsec' or 'pixels'")
 
     def magnification(self, grid, source_redshift):
-        """
-        Computes the magnification of the lensing cluster on the given grid.
+        """Computes the magnification of the lensing cluster on the given grid.
 
-        :param grid: grid on which to compute the magnification
-        :type grid: Grid
-        :param source_redshift: redshift of the source
-        :type source_redshift: float
+        Parameters
+        ----------
+        grid : Grid
+            grid on which to compute the magnification
+        source_redshift : float
+            redshift of the source
 
-        :return: 2d array of magnification values
-        :rtype: numpy.ndarray
+        Returns
+        -------
+        numpy.ndarray
+            2d array of magnification values
         """
         x, y = grid.x, grid.y
         traced_points_x, traced_points_y = self.trace_grid(grid, source_redshift)
@@ -65,16 +78,19 @@ class Lens:
         return abs(1 / (dxdx * dydy - dxdy * dydx))
 
     def convergence(self, grid, source_redshift):
-        """
-        Computes the convergence of the lensing cluster on the given grid.
+        """Computes the convergence of the lensing cluster on the given grid.
 
-        :param grid: grid on which to compute the convergence
-        :type grid: Grid
-        :param source_redshift: redshift of the source
-        :type source_redshift: float
+        Parameters
+        ----------
+        grid : Grid
+            grid on which to compute the convergence
+        source_redshift : float
+            redshift of the source
 
-        :return: 2d array of convergence values
-        :rtype: numpy.ndarray
+        Returns
+        -------
+        numpy.ndarray
+            2d array of convergence values
         """
         x, y = grid.x, grid.y
         traced_points_x, traced_points_y = self.trace_grid(grid, source_redshift)
@@ -88,17 +104,22 @@ class Lens:
     def magnification_line(
         self, grid, source_redshift, threshold=500
     ):
-        """
-        Returns a list of points in the image plane with magnification greater than a given threshold.
+        """Returns a list of points in the image plane with magnification greater than a given threshold.
 
-        :param grid: grid on which to compute the magnification
-        :type grid: Grid
-        :param source_redshift: redshift of the source
-        :type source_redshift: float
-        :param threshold: threshold used to filter magnification values, defaults to 500
-        :type threshold: float, optional
+        Parameters
+        ----------
+        grid : Grid
+            grid on which to compute the magnification
+        source_redshift : float
+            redshift of the source
+        threshold : float, optional
+            threshold used to filter magnification values, defaults to
+            500
 
-        :return: list of points with magnification greater than threshold
+        Returns
+        -------
+        unknown
+            list of points with magnification greater than threshold
         """
         image_plane_magnification = self.magnification(grid, source_redshift)
         image_plane_points = grid.as_list_of_points()
@@ -110,19 +131,23 @@ class Lens:
         source_redshift,
         threshold=500
     ):
-        """
-        Returns a list of points on the source plane corresponding to the caustic of the lensing cluster.
+        """Returns a list of points on the source plane corresponding to the caustic of the lensing cluster.
         The caustic is computed by ray tracing the points on the magnification line back to the source plane.
 
-        :param image_plane_grid: image plane grid on which to compute the magnification
-        :type image_plane_grid: Grid
-        :param source_redshift: redshift of the source
-        :type source_redshift: float
-        :param threshold: threshold used to filter magnification values, defaults to 500
-        :type threshold: float, optional
+        Parameters
+        ----------
+        image_plane_grid : Grid
+            image plane grid on which to compute the magnification
+        source_redshift : float
+            redshift of the source
+        threshold : float, optional
+            threshold used to filter magnification values, defaults to
+            500
 
-        :return: list of points on the caustic
-        :rtype: numpy.ndarray
+        Returns
+        -------
+        numpy.ndarray
+            list of points on the caustic
         """
         image_plane_points = self.magnification_line(
             image_plane_grid, source_redshift, threshold
@@ -131,16 +156,19 @@ class Lens:
         return source_plane_points
 
     def trace_grid(self, grid, source_redshift):
-        """
-        Ray trace a grid from the image plane back to the source plane at a given redshift.
+        """Ray trace a grid from the image plane back to the source plane at a given redshift.
 
-        :param grid: grid to trace
-        :type grid: Grid
-        :param source_redshift: redshift of the source
-        :type source_redshift: float
+        Parameters
+        ----------
+        grid : Grid
+            grid to trace
+        source_redshift : float
+            redshift of the source
 
-        :return: traced grid in meshgrid format
-        :rtype: tuple(numpy.ndarray,numpy.ndarray)
+        Returns
+        -------
+        tuple(numpy.ndarray,numpy.ndarray)
+            traced grid in meshgrid format
         """
         # compute deflection angle scale factor
         scale_factor = deflection_angle_scale_factor(self.redshift, source_redshift)
@@ -170,16 +198,19 @@ class Lens:
         return traced_points_x, traced_points_y
 
     def trace_points(self, points, source_redshift):
-        """
-        Ray trace a set of points from the image plane back to the source plane at a given redshift.
+        """Ray trace a set of points from the image plane back to the source plane at a given redshift.
 
-        :param points: list of points to trace given as an array of shape (n,2)
-        :type points: numpy.ndarray
-        :param source_redshift: redshift of the source
-        :type source_redshift: float
+        Parameters
+        ----------
+        points : numpy.ndarray
+            list of points to trace given as an array of shape (n,2)
+        source_redshift : float
+            redshift of the source
 
-        :return: list of traced points
-        :rtype: numpy.ndarray
+        Returns
+        -------
+        numpy.ndarray
+            list of traced points
         """
         # compute deflection angle scale factor
         scale_factor = deflection_angle_scale_factor(self.redshift, source_redshift)
@@ -204,20 +235,23 @@ class Lens:
 
 
 def deflection_angle_scale_factor(z1, z2, H0=70, Om0=0.3):
-    """
-    Compute the deflection angle scale factor :math:`D_{ds}/D_s` for a lens at redshift z1 and a source at redshift z2.
+    """Compute the deflection angle scale factor :math:`D_{ds}/D_s` for a lens at redshift z1 and a source at redshift z2.
 
-    :param z1: redshift of the lens
-    :type z1: float
-    :param z2: redshift of the source
-    :type z2: float
-    :param H0: Hubble constant, defaults to 70
-    :type H0: float, optional
-    :param Om0: matter density parameter, defaults to 0.3
-    :type Om0: float, optional
+    Parameters
+    ----------
+    z1 : float
+        redshift of the lens
+    z2 : float
+        redshift of the source
+    H0 : float, optional
+        Hubble constant, defaults to 70
+    Om0 : float, optional
+        matter density parameter, defaults to 0.3
 
-    :return: deflection angle scale factor :math:`D_{ds}/D_s`
-    :rtype: float
+    Returns
+    -------
+    float
+        deflection angle scale factor :math:`D_{ds}/D_s`
     """
     cosmo = FlatLambdaCDM(H0, Om0)
 

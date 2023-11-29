@@ -8,25 +8,35 @@ from imaging import Grid
 
 
 class Galaxy:
-    """
-    Class representing a galaxy defined using particle data
+    """Class representing a galaxy defined using particle data
 
-    :param filename: name of the file containing the particle data
-    :type filename: str
-    :param center: coordinates of the center of the galaxy
-    :type center: astropy.coordinates.SkyCoord
-    :param redshift: redshift of the galaxy
-    :type redshift: float
-    :param size: physical size of the galaxy in pc
-    :type size: float
+    Parameters
+    ----------
+    filename : str
+        name of the file containing the particle data
+    center : astropy.coordinates.SkyCoord
+        coordinates of the center of the galaxy
+    redshift : float
+        redshift of the galaxy
+    size : float
+        physical size of the galaxy in pc
 
-    :ivar data: particle data
-    :ivar data_columns: names of the columns of the particle data
-    :ivar center: coordinates of the center of the galaxy
-    :ivar redshift: redshift of the galaxy
-    :ivar size: physical size of the galaxy in pc
-    :ivar angular_size: angular size of the galaxy in arcseconds
-    :ivar luminosity_distance: luminosity distance of the galaxy in pc
+    Attributes
+    ----------
+    data
+        particle data
+    data_columns
+        names of the columns of the particle data
+    center
+        coordinates of the center of the galaxy
+    redshift
+        redshift of the galaxy
+    size
+        physical size of the galaxy in pc
+    angular_size
+        angular size of the galaxy in arcseconds
+    luminosity_distance
+        luminosity distance of the galaxy in pc
     """
     def __init__(self, filename, center, redshift, size):
         # load particle data
@@ -53,33 +63,53 @@ class Galaxy:
         self.luminosity_distance = cosmo.luminosity_distance(redshift).value * 1e6
 
     def pixel_scale(self, resolution, zoom_factor=1):
-        """
-        Computes the pixel scale of an image of the galaxy at a given resolution and zoom factor.
+        """Computes the pixel scale of an image of the galaxy at a given resolution and zoom factor.
 
-        :param resolution: number of pixels on each side of the image
-        :type resolution: int
-        :param zoom_factor: zoom factor of the image, defaults to 1
-        :type zoom_factor: float, optional
+        Parameters
+        ----------
+        resolution : int
+            number of pixels on each side of the image
+        zoom_factor : float, optional
+            zoom factor of the image, defaults to 1
+
+        Returns
+        -------
+        float
+            pixel scale of the image
         """
         return (2 * self.angular_size) / resolution * zoom_factor
 
     def grid(self, resolution, zoom_factor=1):
-        """
-        Returns a grid of points on the sky at a given resolution and zoom factor.
+        """Returns a grid of points on the sky at a given resolution and zoom factor.
+        
+        Parameters
+        ----------
+        resolution : int
+            number of pixels on each side of the image
+        zoom_factor : float, optional
+            zoom factor of the image, defaults to 1
+
+        Returns
+        -------
+        imaging.Grid
+            grid of points on the sky
         """
         return Grid(self.center, resolution, self.pixel_scale(resolution, zoom_factor))
 
     def create_image(self, resolution, zoom_factor=1):
-        """
-        Returns an image of the galaxy as a 2d array of fluxes in Jy.
+        """Returns an image of the galaxy as a 2d array of fluxes in Jy.
 
-        :param resolution: number of pixels on each side of the image
-        :type resolution: int
-        :param zoom_factor: zoom factor of the image, defaults to 1
-        :type zoom_factor: float, optional
+        Parameters
+        ----------
+        resolution : int
+            number of pixels on each side of the image
+        zoom_factor : float, optional
+            zoom factor of the image, defaults to 1
 
-        :return: image of the galaxy
-        :rtype: numpy.ndarray
+        Returns
+        -------
+        numpy.ndarray
+            image of the galaxy
         """
         # convert position to arcseconds
         x_viewed = ang_size(self.data[:, 2], self.redshift)
@@ -110,15 +140,21 @@ class Galaxy:
         return lums.T * zoom_factor
 
     def plot(self, resolution, norm=None, zoom_factor=1):
-        """
-        Plots the galaxy at a given resolution and zoom factor.
+        """Plots the galaxy at a given resolution and zoom factor.
 
-        :param resolution: number of pixels on each side of the image
-        :type resolution: int
-        :param norm: normalization of the image, defaults to None
-        :type norm: matplotlib.colors.Normalize, optional
-        :param zoom_factor: zoom factor of the image, defaults to 1
-        :type zoom_factor: float, optional
+        Parameters
+        ----------
+        resolution : int
+            number of pixels on each side of the image
+        norm : matplotlib.colors.Normalize, optional
+            normalization of the image, defaults to None
+        zoom_factor : float, optional
+            zoom factor of the image, defaults to 1
+
+        Returns
+        -------
+        matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            figure and axes of the plot
         """
         wcs = self.grid(resolution, zoom_factor).wcs
 
@@ -141,8 +177,7 @@ class Galaxy:
 
 
 def lum_to_appmag_ab(lum, lum_dist, redshft):
-    """
-    Convert point luminosity to point absolute magnitude as detected
+    """Convert point luminosity to point absolute magnitude as detected
     need luminosity of individual star to be in eg/s/Angstrom
     and lumdistance in pc
     """
@@ -152,16 +187,19 @@ def lum_to_appmag_ab(lum, lum_dist, redshft):
 
 
 def ang_size(phys_size, redshift):
-    """
-    Computes angular size in arcseconds given physical size in pc and redshift
+    """Computes angular size in arcseconds given physical size in pc and redshift
 
-    :param phys_size: physical size in pc
-    :type phys_size: float
-    :param redshift: redshift
-    :type redshift: float
+    Parameters
+    ----------
+    phys_size : float
+        physical size in pc
+    redshift : float
+        redshift
 
-    :return: angular size in arcseconds
-    :rtype: float
+    Returns
+    -------
+    float
+        angular size in arcseconds
     """
 
     # compute luminosity distance in pc
@@ -172,15 +210,12 @@ def ang_size(phys_size, redshift):
 
 
 def zshifted_flux_jy(lum, lum_dis, wav_angs=1500):
-    """
-    need lum distance in parsecs
-    """
+    """need lum distance in parsecs"""
     return 7.5e11 * (wav_angs / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
 
 
 def lum_look_up_table(stellar_ages, table_link, column_idx: int, log=True):
-    """
-    given stsci link and ages, returns likely (log) luminosities
+    """given stsci link and ages, returns likely (log) luminosities
     does this via residuals
     Here are some tables.
     https://www.stsci.edu/science/starburst99/docs/table-index.html

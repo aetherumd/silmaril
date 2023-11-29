@@ -8,20 +8,23 @@ def open_fits(file_name):
 
 
 def transform_image(image, pixel_scale, angle=0, center=(0, 0)):
-    """
-    Rotates and shifts an image.
+    """Rotates and shifts an image.
 
-    :param image: image to transform
-    :type image: numpy.ndarray
-    :param angle: angle by which to rotate the image given in degrees
-    :type angle: float
-    :param center: new center of the image
-    :type center: tuple
-    :param pixel_scale: pixel scale of the image
-    :type pixel_scale: float
+    Parameters
+    ----------
+    image : numpy.ndarray
+        image to transform
+    angle : float
+        angle by which to rotate the image given in degrees
+    center : tuple
+        new center of the image
+    pixel_scale : float
+        pixel scale of the image
 
-    :return: transformed image
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    numpy.ndarray
+        transformed image
     """
     pixel_shift = -center[1] / pixel_scale, center[0] / pixel_scale
     transformed_image = image
@@ -32,18 +35,21 @@ def transform_image(image, pixel_scale, angle=0, center=(0, 0)):
 
 
 def fast_griddata(points, values, xi):
-    """
-    A faster version of scipy.interpolate.griddata implemented using scipy.ndimage.map_coordinates.
+    """A faster version of scipy.interpolate.griddata implemented using scipy.ndimage.map_coordinates.
 
-    :param points: list of points at which the values are defined
-    :type points: numpy.ndarray
-    :param values: values to interpolate
-    :type values: numpy.ndarray
-    :param xi: list of points at which to interpolate
-    :type xi: numpy.ndarray
+    Parameters
+    ----------
+    points : numpy.ndarray
+        list of points at which the values are defined
+    values : numpy.ndarray
+        values to interpolate
+    xi : numpy.ndarray
+        list of points at which to interpolate
 
-    :return: interpolated values
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    numpy.ndarray
+        interpolated values
     """
     n = np.sqrt(points.shape[0]).astype(int)
     y_min, y_max = np.min(points[:, 1]), np.max(points[:, 1])
@@ -56,14 +62,17 @@ def fast_griddata(points, values, xi):
 
 
 def list_of_points_from_grid(grid):
-    """
-    Flattens a grid into a list of points.
+    """Flattens a grid into a list of points.
 
-    :param grid: grid to flatten
-    :type grid: numpy.ndarray
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        grid to flatten
 
-    :return: flattened grid
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    numpy.ndarray
+        flattened grid
     """
     grid_points = np.transpose(grid, (1, 2, 0))
     grid_points = np.reshape(grid_points, (-1, 2))
@@ -72,18 +81,21 @@ def list_of_points_from_grid(grid):
 
 
 def grid(center, num_pix, pixel_scale):
-    """
-    Create a 2D grid of coordinates.
+    """Create a 2D grid of coordinates.
 
-    :param center: center of the grid
-    :type center: tuple
-    :param fov: field of view of the grid
-    :type fov: float
-    :param pixel_scale: pixel scale of the grid
-    :type pixel_scale: float
+    Parameters
+    ----------
+    center : tuple
+        center of the grid
+    fov : float
+        field of view of the grid
+    pixel_scale : float
+        pixel scale of the grid
 
-    :return: 2D grid of coordinates
-    :rtype: numpy.ndarray
+    Returns
+    -------
+    numpy.ndarray
+        2D grid of coordinates
     """
     x_center = center[0]
     y_center = center[1]
