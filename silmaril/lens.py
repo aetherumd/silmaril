@@ -19,6 +19,12 @@ class Lens:
     :type redshift: float
     :unit: units of the deflection angles (options are "arcseconds" and "pixels"), defaults to "arcseconds"
     :type unit: str, optional
+
+    :ivar wcs: WCS object for the deflection angle map
+    :ivar redshift: redshift of the lensing cluster
+    :ivar scale: pixel scale of the deflection angle map
+    :ivar x_deflections: x-component of the deflection angles
+    :ivar y_deflections: y-component of the deflection angles
     """
 
     def __init__(self, x_deflections, y_deflections, wcs, redshift, unit="arcsec"):
@@ -80,7 +86,7 @@ class Lens:
         return abs(1 - 0.5 * (dxdx + dydy))
 
     def magnification_line(
-        self, grid, source_redshift, threshold=500, coordinates="world"
+        self, grid, source_redshift, threshold=500
     ):
         """
         Returns a list of points in the image plane with magnification greater than a given threshold.
@@ -102,9 +108,7 @@ class Lens:
         self,
         image_plane_grid,
         source_redshift,
-        threshold=500,
-        source_plane_grid=None,
-        coordinates="world",
+        threshold=500
     ):
         """
         Returns a list of points on the source plane corresponding to the caustic of the lensing cluster.
@@ -165,12 +169,14 @@ class Lens:
 
         return traced_points_x, traced_points_y
 
-    def trace_points(self, points, source_redshift, coordinates="world"):
+    def trace_points(self, points, source_redshift):
         """
         Ray trace a set of points from the image plane back to the source plane at a given redshift.
 
         :param points: list of points to trace given as an array of shape (n,2)
         :type points: numpy.ndarray
+        :param source_redshift: redshift of the source
+        :type source_redshift: float
 
         :return: list of traced points
         :rtype: numpy.ndarray
@@ -205,11 +211,15 @@ def deflection_angle_scale_factor(z1, z2, H0=70, Om0=0.3):
     :type z1: float
     :param z2: redshift of the source
     :type z2: float
+    :param H0: Hubble constant, defaults to 70
+    :type H0: float, optional
+    :param Om0: matter density parameter, defaults to 0.3
+    :type Om0: float, optional
 
     :return: deflection angle scale factor :math:`D_{ds}/D_s`
     :rtype: float
     """
-    cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
+    cosmo = FlatLambdaCDM(H0, Om0)
 
     D_ds = cosmo.angular_diameter_distance_z1z2(z1, z2)  # distance from source to lens
     D_s = cosmo.angular_diameter_distance_z1z2(0, z2)  # distance to source

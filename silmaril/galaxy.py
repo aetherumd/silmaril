@@ -8,6 +8,26 @@ from imaging import Grid
 
 
 class Galaxy:
+    """
+    Class representing a galaxy defined using particle data
+
+    :param filename: name of the file containing the particle data
+    :type filename: str
+    :param center: coordinates of the center of the galaxy
+    :type center: astropy.coordinates.SkyCoord
+    :param redshift: redshift of the galaxy
+    :type redshift: float
+    :param size: physical size of the galaxy in pc
+    :type size: float
+
+    :ivar data: particle data
+    :ivar data_columns: names of the columns of the particle data
+    :ivar center: coordinates of the center of the galaxy
+    :ivar redshift: redshift of the galaxy
+    :ivar size: physical size of the galaxy in pc
+    :ivar angular_size: angular size of the galaxy in arcseconds
+    :ivar luminosity_distance: luminosity distance of the galaxy in pc
+    """
     def __init__(self, filename, center, redshift, size):
         # load particle data
         self.data = np.loadtxt(filename)
@@ -92,6 +112,13 @@ class Galaxy:
     def plot(self, resolution, norm=None, zoom_factor=1):
         """
         Plots the galaxy at a given resolution and zoom factor.
+
+        :param resolution: number of pixels on each side of the image
+        :type resolution: int
+        :param norm: normalization of the image, defaults to None
+        :type norm: matplotlib.colors.Normalize, optional
+        :param zoom_factor: zoom factor of the image, defaults to 1
+        :type zoom_factor: float, optional
         """
         wcs = self.grid(resolution, zoom_factor).wcs
 
