@@ -7,7 +7,6 @@ from matplotlib.colors import LogNorm
 from astropy.cosmology import FlatLambdaCDM
 from imaging import Grid
 
-
 class Galaxy:
     """Class representing a galaxy defined using particle data
 

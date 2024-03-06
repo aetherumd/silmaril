@@ -5,7 +5,6 @@ import numba as nb
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib import path
-from matplotlib.patches import Polygon
 from utilities import *
 from scipy.ndimage import gaussian_filter
 
