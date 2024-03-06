@@ -201,23 +201,13 @@ class Observation:
         numpy.ndarray
             simulated observation as a 2d array of luminosity values
         """
-        # create source image
-        galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor)
-        galaxy_pixel_scale = self.galaxy.pixel_scale(source_resolution, zoom_factor)
-        # rotate source image
-        transformed_galaxy_image = transform_image(
-            galaxy_image, galaxy_pixel_scale, source_rotation, source_center
-        )
-        # create source grid
-        source_grid = self.galaxy.grid(source_resolution, zoom_factor)
-
         # compute lensed image
         nonempty_pixels, arc_pixels, polygons, luminosities = self.trace_pixels(
             source_resolution, source_center, source_rotation, zoom_factor
         )
         lensed_image = np.zeros((self.detector.num_pix, self.detector.num_pix))
         for i, p in enumerate(nonempty_pixels):
-            lensed_image[p] = luminosities[i]
+            lensed_image[p] = luminosities[i]*self.detector.resolution**2
 
         lensed_image = gaussian_filter(
             lensed_image, self.detector.psf_fwhm / 2.355
@@ -347,7 +337,7 @@ class Observation:
                 source_rotation,
                 zoom_factor,
             ),
-            cmap="inferno",
+            cmap="gray",
             norm=norm,
         )
         ax.set_facecolor("black")
@@ -498,7 +488,7 @@ def get_traced_luminosities(
     Returns
     -------
     numpy.ndarray
-        lensed image
+        array of luminosity values in Jy/arcsec^2
     """
     x = source_grid.x
     y = source_grid.y
@@ -559,7 +549,5 @@ def get_traced_luminosities(
             if len(luminosity_values) == 0:
                 lum[r] = 0
             else:
-                source_pixel_area = (x[1] - x[0]) * (y[1] - y[0])
-                polygon_area = np.linalg.det([top_left-bottom_left, bottom_right-bottom_left])
-                lum[r] = np.mean(luminosity_values)#*source_pixel_area/polygon_area*len(x)**2/500**2
+                lum[r] = np.mean(luminosity_values)
     return lum

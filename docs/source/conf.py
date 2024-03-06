@@ -33,7 +33,8 @@ release = '0.0.1'
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
-    "myst_nb"
+    "myst_nb",
+    "sphinx.ext.napoleon"
 ]
 myst_enable_extensions = ["dollarmath", "amsmath"]
 nb_execution_mode = "off"
