@@ -8,3 +8,4 @@ astropy
 furo
 myst-nb
 pandas
+numba
