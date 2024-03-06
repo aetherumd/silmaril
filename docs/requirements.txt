@@ -1,0 +1,9 @@
+ipython
+sphinx
+scipy
+numpy
+matplotlib
+tqdm
+astropy
+furo
+myst-nb

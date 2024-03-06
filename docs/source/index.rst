@@ -3,14 +3,39 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to silmaril's documentation!
-====================================
+Overview
+========
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+`silmaril` is a python package for simulating gravitationally lensed observations of high-redshift galaxies.
 
 
+Installation
+------------
+Clone the repository from github
+
+.. code-block:: bash
+
+   git clone https://github.com/syp2001/silmaril.git
+
+Install using pip from within the cloned repo
+
+.. code-block:: bash
+
+   pip install .
+
+
+.. _API Reference:
+
+API Reference
+-------------
+
+.. autosummary::
+   :toctree: _autosummary
+   :caption: API Reference
+   :template: custom-module-template.rst
+   :recursive:
+
+   silmaril
 
 Indices and tables
 ==================
