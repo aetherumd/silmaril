@@ -1,4 +1,4 @@
-Observation
+﻿Observation
 ===========
 
 .. currentmodule:: silmaril.imaging

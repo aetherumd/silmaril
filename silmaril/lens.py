@@ -1,8 +1,11 @@
+"""
+Module containing the Lens class
+"""
 from astropy.wcs.utils import proj_plane_pixel_scales
 from astropy.cosmology import FlatLambdaCDM
 from astropy.coordinates import SkyCoord
 from scipy.ndimage import map_coordinates
-from utilities import *
+from .utilities import *
 
 
 class Lens:

@@ -23,6 +23,11 @@ Install using pip from within the cloned repo
 
    pip install .
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+
+   notebooks/sunrise
 
 .. _API Reference:
 
@@ -35,7 +40,13 @@ API Reference
    :template: custom-module-template.rst
    :recursive:
 
-   silmaril
+   ~silmaril.galaxy.Galaxy
+   ~silmaril.lens.Lens
+   ~silmaril.imaging.Detector
+   ~silmaril.imaging.Observation
+   ~silmaril.galaxy
+   ~silmaril.imaging
+   ~silmaril.lens
 
 Indices and tables
 ==================

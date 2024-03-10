@@ -1,4 +1,4 @@
-Detector
+﻿Detector
 ========
 
 .. currentmodule:: silmaril.imaging

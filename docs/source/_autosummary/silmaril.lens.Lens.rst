@@ -1,4 +1,4 @@
-Lens
+﻿Lens
 ====
 
 .. currentmodule:: silmaril.lens

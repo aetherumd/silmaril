@@ -1,3 +1,6 @@
+"""
+Module containing methods and classes for generating simulated observations
+"""
 import numpy as np
 from astropy.wcs import WCS
 from numba import jit
@@ -5,7 +8,7 @@ import numba as nb
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib import path
-from utilities import *
+from .utilities import *
 from scipy.ndimage import gaussian_filter
 
 

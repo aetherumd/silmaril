@@ -1,3 +1,6 @@
+"""
+Module containing utility methods for manipulating images and grids
+"""
 import numpy as np
 from scipy.ndimage import map_coordinates, rotate, shift
 from astropy.io import fits

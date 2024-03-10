@@ -1,4 +1,4 @@
-Galaxy
+﻿Galaxy
 ======
 
 .. currentmodule:: silmaril.galaxy
