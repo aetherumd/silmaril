@@ -2,7 +2,6 @@
 Module containing the Galaxy class along with methods for working with filters and luminosity values
 """
 import numpy as np
-import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
@@ -10,6 +9,7 @@ from matplotlib.colors import LogNorm
 from astropy.cosmology import FlatLambdaCDM
 from .imaging import Grid
 from importlib.resources import files
+import scipy
 
 class Galaxy:
     """Class representing a galaxy defined using particle data
@@ -67,8 +67,8 @@ class Galaxy:
                 "ctr(code)",
                 "ctr(pc)",
             ]
-            self.ages = data[:,1]
-            self.positions = data[:,2:5]
+            self.ages = self.data[:,1]
+            self.positions = self.data[:,2:5]
         elif data_format == "fid":
             self.data_columns = [
                 "t_sim[Myr]",
@@ -86,8 +86,8 @@ class Galaxy:
                 "Vz[km/s]",
                 "mass[Msun]"
             ]
-            self.ages = data[:,0]
-            self.positions = data[:,7:10]
+            self.ages = self.data[:,0]
+            self.positions = self.data[:,7:10]
         else:
             raise ValueError("Invalid format "+str(format))
         

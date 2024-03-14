@@ -1,6 +1,7 @@
 """
 Module containing methods and classes for generating simulated observations
 """
+
 import numpy as np
 from astropy.wcs import WCS
 from numba import jit
@@ -159,6 +160,7 @@ class Observation:
         grid of source plane coordinates of the corners of each pixel on
         the image plane
     """
+
     def __init__(self, detector, lens, galaxy):
         self.detector, self.lens, self.galaxy = detector, lens, galaxy
 
@@ -166,9 +168,7 @@ class Observation:
         image_pixel_corners = Grid(
             self.detector.center, self.detector.num_pix + 1, self.detector.resolution
         )
-        traced_pixel_corners = self.lens.trace_grid(
-            image_pixel_corners, self.galaxy.redshift
-        )
+        traced_pixel_corners = self.lens.trace_grid(image_pixel_corners, self.galaxy.redshift)
         self.traced_pixel_corners = np.transpose(traced_pixel_corners, (1, 2, 0))
 
     def simulate_observation(
@@ -209,7 +209,7 @@ class Observation:
         )
         lensed_image = np.zeros((self.detector.num_pix, self.detector.num_pix))
         for i, p in enumerate(nonempty_pixels):
-            lensed_image[p] = luminosities[i]*self.detector.resolution**2
+            lensed_image[p] = luminosities[i] * self.detector.resolution**2
 
         lensed_image = gaussian_filter(
             lensed_image, self.detector.psf_fwhm / 2.355
@@ -260,7 +260,7 @@ class Observation:
         hdu.writeto(filename, overwrite=True)
 
     def trace_pixels(
-        self, source_resolution, source_center=(0, 0), source_rotation=0, zoom_factor=1
+        self, source_resolution, source_center=(0, 0), source_rotation=0, zoom_factor=1, star_by_star=False
     ):
         """"""
         # create source image
@@ -276,9 +276,12 @@ class Observation:
         nonempty_pixels, arc_pixels = get_arc_pixels(
             source_grid, self.traced_pixel_corners, self.detector.grid
         )
-        polygons = get_traced_pixels(
-            source_grid, self.traced_pixel_corners, nonempty_pixels
-        )
+        polygons = get_traced_pixels(source_grid, self.traced_pixel_corners, nonempty_pixels)
+
+        # if star_by_star:
+        #     x_viewed = self.galaxy.positions[:,0]
+        #     y_viewed = self.galaxy.positions[:,1]
+        #     flux = self.galaxy
         luminosities = get_traced_luminosities(
             transformed_galaxy_image,
             source_grid,
@@ -354,7 +357,7 @@ class Observation:
 
 @jit(nopython=True)
 def nonempty_pixel_indices(traced_pixel_corners, source_x_range, source_y_range):
-    """Returns a list of pixel indices on the image plane corresponding to pixels 
+    """Returns a list of pixel indices on the image plane corresponding to pixels
     that fall within the source image when traced back to the source plane.
 
     Parameters
@@ -372,9 +375,7 @@ def nonempty_pixel_indices(traced_pixel_corners, source_x_range, source_y_range)
     np.ndarray
         list of pixel indices
     """
-    image_pix = (
-        traced_pixel_corners.shape[0] - 1
-    )  # number of pixels on each side of the image
+    image_pix = traced_pixel_corners.shape[0] - 1  # number of pixels on each side of the image
     nonempty_pixels = []
     # loop over all pixels on the image plane
     for i in range(image_pix):
@@ -392,10 +393,8 @@ def nonempty_pixel_indices(traced_pixel_corners, source_x_range, source_y_range)
     return nonempty_pixels
 
 
-def get_arc_pixels(
-    source_grid, traced_pixel_corners, image_plane, nonempty_pixels=None
-):
-    """Returns the list of pixels on the image plane that fall within the source 
+def get_arc_pixels(source_grid, traced_pixel_corners, image_plane, nonempty_pixels=None):
+    """Returns the list of pixels on the image plane that fall within the source
     image when traced back to the source plane.
 
     Parameters
@@ -426,9 +425,7 @@ def get_arc_pixels(
 
     image_plane_grid = image_plane.as_2d_array()
 
-    return nonempty_pixels, np.array(
-        [image_plane_grid[index] for index in nonempty_pixels]
-    )
+    return nonempty_pixels, np.array([image_plane_grid[index] for index in nonempty_pixels])
 
 
 def get_traced_pixels(source_grid, traced_pixel_corners, nonempty_pixels=None):
@@ -471,10 +468,9 @@ def get_traced_pixels(source_grid, traced_pixel_corners, nonempty_pixels=None):
     return polygons
 
 
-def get_traced_luminosities(
-    source_image, source_grid, traced_pixel_corners, nonempty_pixels=None
-):
-    """Lenses the given source image and returns a 2d array of luminosity values corresponding to
+def get_traced_luminosities(source_image, source_grid, traced_pixel_corners, nonempty_pixels=None):
+    """
+    Lenses the given source image and returns a 2d array of luminosity values corresponding to
     pixels on the image plane.
 
     Parameters
@@ -483,9 +479,12 @@ def get_traced_luminosities(
         image of the source
     source_grid : Grid
         grid of source plane coordinates
-    traced_corners_grid : numpy.ndarray
+    traced_pixel_corners : numpy.ndarray
         grid of source plane coordinates of the corners of each pixel on
         the image plane
+    nonempty_pixels : np.ndarray
+        list of indices of pixels on the image plane that fall on the 
+        source image when traced back to the source plane
 
     Returns
     -------
@@ -537,12 +536,12 @@ def get_traced_luminosities(
             y_index_range[0] : y_index_range[1] + 1,
             x_index_range[0] : x_index_range[1] + 1,
         ]
+
         if image_slice.size == 0:
             lum[r] = 0
         else:
             source_plane_slice = source_plane_2d[
-                y_index_range[0] : y_index_range[1] + 1,
-                x_index_range[0] : x_index_range[1] + 1,
+                y_index_range[0] : y_index_range[1] + 1, x_index_range[0] : x_index_range[1] + 1
             ]
             source_points = np.reshape(source_plane_slice, (-1, 2))
 
@@ -552,4 +551,89 @@ def get_traced_luminosities(
                 lum[r] = 0
             else:
                 lum[r] = np.mean(luminosity_values)
+
+    return lum
+
+
+def traced_luminosities_from_stars(x_viewed,y_viewed,flux,source_grid,traced_pixel_corners, nonempty_pixels=None):
+    """
+    Lenses the given source galaxy directly from particle data and returns a 2d array of luminosity values corresponding to
+    pixels on the image plane.
+
+    Parameters
+    ----------
+    x_viewed : numpy.ndarray
+        array of particle x coordinates in arcseconds
+    y_viewed : numpy.ndarray
+        array of particle y coordinates in arcseconds
+    flux : numpy.ndarray
+        array of particle fluxes in Jy
+    traced_pixel_corners : numpy.ndarray
+        grid of source plane coordinates of the corners of each pixel on
+        the image plane
+    nonempty_pixels : np.ndarray
+        list of indices of pixels on the image plane that fall on the 
+        source image when traced back to the source plane
+
+    Returns
+    -------
+    numpy.ndarray
+        array of luminosity values in Jy/arcsec^2
+    """
+    x = source_grid.x
+    y = source_grid.y
+
+    if nonempty_pixels is None:
+        source_x_range = [np.min(source_grid.x), np.max(source_grid.x)]
+        source_y_range = [np.min(source_grid.y), np.max(source_grid.y)]
+        nonempty_pixels = nonempty_pixel_indices(
+            traced_pixel_corners,
+            nb.typed.List(source_x_range),
+            nb.typed.List(source_y_range),
+        )
+
+    source_x_range = [np.min(x),np.max(x)]
+    source_y_range = [np.min(y),np.max(y)]
+
+    # transform coordinates
+    source_center = [np.sum(source_x_range)/2,np.sum(source_y_range)/2] 
+    x_viewed = x_viewed + source_center[0]
+    y_viewed = y_viewed + source_center[1]
+    
+    lum = np.zeros(len(nonempty_pixels))
+
+    for r in range(len(nonempty_pixels)):
+        i, j = nonempty_pixels[r]
+        top_left = traced_pixel_corners[i,j]
+        top_right = traced_pixel_corners[i+1,j]
+        bottom_right = traced_pixel_corners[i+1,j+1]
+        bottom_left = traced_pixel_corners[i,j+1]
+
+        vertices = [top_left,top_right,bottom_right,bottom_left]
+
+        traced_pixel = path.Path(vertices)
+
+        # compute bounding box
+        x_min = min([v[0] for v in vertices])
+        y_min = min([v[1] for v in vertices])
+        x_max = max([v[0] for v in vertices])
+        y_max = max([v[1] for v in vertices])
+
+        condition = (x_viewed > x_min) & (x_viewed < x_max) & (y_viewed > y_min) & (y_viewed < y_max)
+
+        if condition.sum() == 0:
+            lum[r] = 0
+        else:
+            source_points = np.column_stack((x_viewed[condition], y_viewed[condition]))
+
+            index = traced_pixel.contains_points(source_points)
+            pixel_fluxes = flux[condition]
+
+            luminosity_values = pixel_fluxes[index]
+            if len(luminosity_values) == 0:
+                lum[r] = 0
+            else:
+                polygon_area = abs(np.linalg.det([top_left-bottom_left,bottom_right-bottom_left]))
+                lum[r] = np.sum(luminosity_values)/polygon_area
+    
     return lum
