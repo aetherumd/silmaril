@@ -1,15 +1,17 @@
 """
 Module containing the Galaxy class along with methods for working with filters and luminosity values
 """
+
 import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from astropy.cosmology import FlatLambdaCDM
-from .imaging import Grid
+from .utilities import Grid
 from importlib.resources import files
 import scipy
+
 
 class Galaxy:
     """Class representing a galaxy defined using particle data
@@ -50,7 +52,8 @@ class Galaxy:
     luminosity_distance
         luminosity distance of the galaxy in pc
     """
-    def __init__(self, filename,center, redshift, size,data_format="pos"):
+
+    def __init__(self, filename, center, redshift, size, data_format="pos"):
         # load particle data
         self.data = np.loadtxt(filename)
         self.data_format = data_format
@@ -67,8 +70,8 @@ class Galaxy:
                 "ctr(code)",
                 "ctr(pc)",
             ]
-            self.ages = self.data[:,1]
-            self.positions = self.data[:,2:5]
+            self.ages = self.data[:, 1]
+            self.positions = self.data[:, 2:5]
         elif data_format == "fid":
             self.data_columns = [
                 "t_sim[Myr]",
@@ -84,13 +87,13 @@ class Galaxy:
                 "Vx[km/s]",
                 "Vy[km/s]",
                 "Vz[km/s]",
-                "mass[Msun]"
+                "mass[Msun]",
             ]
-            self.ages = self.data[:,0]
-            self.positions = self.data[:,7:10]
+            self.ages = self.data[:, 0]
+            self.positions = self.data[:, 7:10]
         else:
-            raise ValueError("Invalid format "+str(format))
-        
+            raise ValueError("Invalid format " + str(format))
+
         self.center = center
         self.redshift = redshift
         self.size = size
@@ -119,7 +122,7 @@ class Galaxy:
 
     def grid(self, resolution, zoom_factor=1):
         """Returns a grid of points on the sky at a given resolution and zoom factor.
-        
+
         Parameters
         ----------
         resolution : int
@@ -134,7 +137,7 @@ class Galaxy:
         """
         return Grid(self.center, resolution, self.pixel_scale(resolution, zoom_factor))
 
-    def create_image(self, resolution, filter_name="F200W", zoom_factor=1):
+    def create_image(self, resolution, zoom_factor=1, filter_name="F200W"):
         """Returns an image of the galaxy as a 2d array of fluxes in Jy.
 
         Parameters
@@ -154,17 +157,17 @@ class Galaxy:
         pixel_scale = self.pixel_scale(resolution, zoom_factor)
 
         # convert position to arcseconds
-        x_viewed = ang_size(self.positions[:,0], self.redshift)
-        y_viewed = ang_size(self.positions[:,1], self.redshift)
+        x_viewed = ang_size(self.positions[:, 0], self.redshift)
+        y_viewed = ang_size(self.positions[:, 1], self.redshift)
 
         ages = self.ages
-        ages=np.where(ages>0., ages, 0.)
+        ages = np.where(ages > 0.0, ages, 0.0)
         # compute flux using lookup table
         if filter_name is None:
             flux = zshifted_flux_jy(
                 lum_look_up_table(
-                    stellar_ages=ages,
-                    table_link="l1500_inst_e.txt",
+                    stellar_ages=ages * 1e6,
+                    table_link=str(files("silmaril.data").joinpath("l1500_inst_e.txt")),
                     column_idx=1,
                     log=False,
                 ),
@@ -173,15 +176,12 @@ class Galaxy:
         else:
             flux = zshifted_flux_jy(
                 lum_lookup_filtered(
-                    stellar_ages=ages,
-                    z=self.redshift,
-                    table_file=None,
-                    filter_name = filter_name
+                    stellar_ages=ages, z=self.redshift, table_file=None, filter_name=filter_name
                 ),
                 self.luminosity_distance,
             )
 
-        flux = flux/pixel_scale**2
+        flux = flux / pixel_scale**2
 
         lums, xedges, yedges = np.histogram2d(
             x_viewed,
@@ -220,9 +220,7 @@ class Galaxy:
 
         fig = plt.figure()
         ax = fig.add_subplot(projection=wcs)
-        im = ax.imshow(
-            self.create_image(resolution, zoom_factor), cmap="inferno", norm=norm
-        )
+        im = ax.imshow(self.create_image(resolution, zoom_factor), cmap="inferno", norm=norm)
         ax.set_facecolor("black")
         ra = ax.coords["ra"]
         ra.set_ticklabel(exclude_overlapping=True)
@@ -298,7 +296,8 @@ def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500):
     """
     return 7.5e10 * (pivot_wav / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
 
-def pivot_wavelength(filter_name,z):
+
+def pivot_wavelength(filter_name, z):
     """
     Computes the pivot wavelength of the given filter blueshifted by z
 
@@ -314,9 +313,19 @@ def pivot_wavelength(filter_name,z):
     pivot wavelength
     """
     # load filter throughput curve
-    filter_data = np.loadtxt(str(files('silmaril.data.mean_throughputs').joinpath(filter_name + "_mean_system_throughput.txt")),skiprows=1)
-    wav_angs = filter_data[:,0]*1e4/(1+z) # convert microns to angstroms and blueshift
-    pivot_wav = np.sqrt(np.trapz(wav_angs*filter_data[:,1],wav_angs)/np.trapz(filter_data[:,1]/wav_angs,wav_angs))
+    filter_data = np.loadtxt(
+        str(
+            files("silmaril.data.mean_throughputs").joinpath(
+                filter_name + "_mean_system_throughput.txt"
+            )
+        ),
+        skiprows=1,
+    )
+    wav_angs = filter_data[:, 0] * 1e4 / (1 + z)  # convert microns to angstroms and blueshift
+    pivot_wav = np.sqrt(
+        np.trapz(wav_angs * filter_data[:, 1], wav_angs)
+        / np.trapz(filter_data[:, 1] / wav_angs, wav_angs)
+    )
     return pivot_wav
 
 
@@ -324,7 +333,7 @@ def lum_lookup_filtered(
     stellar_ages: float,
     z,
     table_file: str,
-    filter_name = "F200W",
+    filter_name="F200W",
     stellar_masses=10,
     m_gal=1e6,
 ):
@@ -334,7 +343,7 @@ def lum_lookup_filtered(
     Parameters
     ----------
     stellar_ages : float
-        ages fo the stars in years
+        ages of the stars in Myr
     z : float
         redshift of the galaxy
     filter_name : str
@@ -352,28 +361,37 @@ def lum_lookup_filtered(
         returns the luminosity of the individual stars, default UV luminosity
 
     """
-    filter_data = np.loadtxt(str(files('silmaril.data.mean_throughputs').joinpath(filter_name + "_mean_system_throughput.txt")),skiprows=1)
-    wav_angs = filter_data[:,0]*1e4/(1+z) # convert microns to angstroms and blueshift
+    filter_data = np.loadtxt(
+        str(
+            files("silmaril.data.mean_throughputs").joinpath(
+                filter_name + "_mean_system_throughput.txt"
+            )
+        ),
+        skiprows=1,
+    )
+    wav_angs = filter_data[:, 0] * 1e4 / (1 + z)  # convert microns to angstroms and blueshift
 
-    ages = np.concatenate((range(1,20),range(20,100,10),range(100,1000,100))) # in Myr
+    ages = np.concatenate((range(1, 20), range(20, 100, 10), range(100, 1000, 100)))  # in Myr
 
     if table_file is None:
-        np.loadtxt(str(files('silmaril.data').joinpath("fig7e.dat")),skiprows=1)
+        starburst = np.loadtxt(str(files("silmaril.data").joinpath("fig7e.dat")), skiprows=3)
     else:
-        starburst = np.loadtxt(table_file, skiprows=3) # load starburst data
+        starburst = np.loadtxt(table_file, skiprows=3)  # load starburst data
 
-    starburst[:,1:] = np.power(10,starburst[:,1:]) # convert from log to linear
+    starburst[:, 1:] = np.power(10, starburst[:, 1:])  # convert from log to linear
 
-    mean_phot_rate = np.zeros(len(ages)) # initialize empty array
+    mean_phot_rate = np.zeros(len(ages))  # initialize empty array
 
     for i in range(len(ages)):
-        lum = np.interp(wav_angs,starburst[:,0],starburst[:,i+1])
-        mean_phot_rate[i] = np.trapz(wav_angs*lum*filter_data[:,1],wav_angs)/np.trapz(wav_angs*filter_data[:,1],wav_angs)
+        lum = np.interp(wav_angs, starburst[:, 0], starburst[:, i + 1])
+        mean_phot_rate[i] = np.trapz(wav_angs * lum * filter_data[:, 1], wav_angs) / np.trapz(
+            wav_angs * filter_data[:, 1], wav_angs
+        )
 
-    lookup = scipy.interpolate.CubicSpline(ages,mean_phot_rate)
+    lookup = scipy.interpolate.CubicSpline(ages, mean_phot_rate)
 
-    return lookup(stellar_ages)*(stellar_masses / m_gal)
-    
+    return lookup(stellar_ages) * (stellar_masses / m_gal)
+
 
 def lum_look_up_table(
     stellar_ages: float,

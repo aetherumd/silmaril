@@ -16,7 +16,6 @@ utilities
       :template: custom-base-template.rst
    
       fast_griddata
-      grid
       list_of_points_from_grid
       open_fits
       transform_image
@@ -24,6 +23,14 @@ utilities
    
 
    
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      Grid
    
    
 

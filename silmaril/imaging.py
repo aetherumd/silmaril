@@ -3,95 +3,15 @@ Module containing methods and classes for generating simulated observations
 """
 
 import numpy as np
-from astropy.wcs import WCS
 from numba import jit
 import numba as nb
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib import path
 from .utilities import *
+from .galaxy import lum_look_up_table, lum_lookup_filtered, zshifted_flux_jy, ang_size
 from scipy.ndimage import gaussian_filter
-
-
-class Grid:
-    """Grid of points on the sky.
-
-    Parameters
-    ----------
-    center : astropy.coordinates.SkyCoord
-        Coordinates of the center of the grid
-    num_pix : int
-        number of pixels on each side of the grid
-    scale : float
-        pixel scale of the grid in arcseconds
-
-    Attributes
-    ----------
-    center
-        Coordinates of the center of the grid
-    n
-        number of pixels on each side of the grid
-    scale
-        pixel scale of the grid in arcseconds
-    fov
-        field of view of the grid in arcseconds
-    x
-        RA coordinates of the grid
-    y
-        DEC coordinates of the grid
-    grid
-        grid of coordinates in meshgrid format
-    wcs
-        astropy.WCS object of the grid
-    """
-
-    def __init__(self, center, num_pix, scale):
-        self.center, self.n, self.scale = center, num_pix, scale
-        self.fov = num_pix * scale
-
-        # convert fov and pixel scale to degrees
-        fov_deg = self.fov / 3600
-        scale_deg = scale / 3600
-
-        # get ra and dec of the center in degrees
-        ra = center.ra.deg
-        dec = center.dec.deg
-
-        # generate x and y coordinates for the center of each pixel
-        self.x = np.linspace(
-            ra + fov_deg / 2 - scale_deg / 2, ra - fov_deg / 2 + scale_deg / 2, self.n
-        )
-        self.y = np.linspace(
-            dec - fov_deg / 2 + scale_deg / 2, dec + fov_deg / 2 - scale_deg / 2, self.n
-        )
-        self.grid = np.meshgrid(self.x, self.y)
-
-        # create wcs containing position information
-        self.wcs = WCS(naxis=2)
-        self.wcs.wcs.crpix = [(self.n + 1) / 2, (self.n + 1) / 2]
-        self.wcs.wcs.cdelt = [-scale_deg, scale_deg]
-        self.wcs.wcs.crval = np.array([ra, dec])
-        self.wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-
-    def as_2d_array(self):
-        """Returns the grid as a 2d array of (ra,dec) coordinate pairs.
-
-        Returns
-        -------
-        numpy.ndarray
-            array of shape (n,n,2)
-        """
-        return np.transpose(self.grid, (1, 2, 0))
-
-    def as_list_of_points(self):
-        """Flattens the grid into a list of (ra,dec) coordinate pairs.
-
-        Returns
-        -------
-        numpy.ndarray
-            array of shape (n^2,2)
-        """
-        return np.reshape(self.as_2d_array(), (-1, 2))
+from importlib.resources import files
 
 
 class Detector:
@@ -105,8 +25,8 @@ class Detector:
         Field of view of the detector in arcseconds
     center : astropy.coordinates.SkyCoord
         Coordinates of the center of the image
-    psf : np.ndarray
-        Point spread function of the detector
+    psf_fwhm : float
+        Full width at half max in pixels of the point spread function of the detector
 
     Attributes
     ----------
@@ -116,8 +36,8 @@ class Detector:
         Field of view of the detector in arcseconds
     center
         Coordinates of the center of the image
-    psf
-        Point spread function of the detector
+    psf_fwhm
+        Full width at half max in pixels of the point spread function of the detector
     num_pix
         Number of pixels on each side of the image
     grid
@@ -176,9 +96,11 @@ class Observation:
         background,
         noise,
         source_resolution,
+        filter_name=None,
         source_center=(0, 0),
         source_rotation=0,
         zoom_factor=1,
+        star_by_star=False,
     ):
         """Simulates an observation of the lensed galaxy.
 
@@ -190,6 +112,8 @@ class Observation:
             standard deviation of the noise
         source_resolution : int
             number of pixels on each side of the source image
+        filter_name : str
+            name of the JWST filter to use (uses luminosity lookup table if set to None)
         source_center : tuple, optional
             coordinate offset in arcseconds of the center of the source
             image, defaults to (0,0)
@@ -197,6 +121,9 @@ class Observation:
             rotation in degrees of the source image, defaults to 0
         zoom_factor : float, optional
             zoom factor of the source image, defaults to 1
+        star_by_star : boolean
+            Lenses galaxy from position data of individual stars if set to true,
+            otherwise creates a source image of the given resolution
 
         Returns
         -------
@@ -205,7 +132,12 @@ class Observation:
         """
         # compute lensed image
         nonempty_pixels, arc_pixels, polygons, luminosities = self.trace_pixels(
-            source_resolution, source_center, source_rotation, zoom_factor
+            source_resolution,
+            source_center,
+            source_rotation,
+            zoom_factor,
+            filter_name,
+            star_by_star,
         )
         lensed_image = np.zeros((self.detector.num_pix, self.detector.num_pix))
         for i, p in enumerate(nonempty_pixels):
@@ -226,6 +158,8 @@ class Observation:
         source_center=(0, 0),
         source_rotation=0,
         zoom_factor=1,
+        filter_name=None,
+        star_by_star=False,
     ):
         """Simulates an observation of the lensed galaxy and saves it to a fits file with WCS information.
 
@@ -246,30 +180,70 @@ class Observation:
             rotation in degrees of the source image, defaults to 0
         zoom_factor : float, optional
             zoom factor of the source image, defaults to 1
+        filter_name : str
+            name of the JWST filter to use (uses luminosity lookup table if set to None)
+        star_by_star : boolean
+            Lenses galaxy from position data of individual stars if set to true,
+            otherwise creates a source image of the given resolution
         """
         lensed_image = self.simulate_observation(
             background,
             noise,
             source_resolution,
+            filter_name,
             source_center,
             source_rotation,
             zoom_factor,
+            star_by_star,
         )
         hdu = fits.PrimaryHDU(lensed_image)
         hdu.header = self.detector.wcs.to_header()
         hdu.writeto(filename, overwrite=True)
 
     def trace_pixels(
-        self, source_resolution, source_center=(0, 0), source_rotation=0, zoom_factor=1, star_by_star=False
+        self,
+        source_resolution,
+        source_center=(0, 0),
+        source_rotation=0,
+        zoom_factor=1,
+        filter_name=None,
+        star_by_star=False,
     ):
-        """"""
-        # create source image
-        galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor)
-        galaxy_pixel_scale = self.galaxy.pixel_scale(source_resolution, zoom_factor)
-        # rotate source image
-        transformed_galaxy_image = transform_image(
-            galaxy_image, galaxy_pixel_scale, source_rotation, source_center
-        )
+        """
+        Performs ray tracing and computes luminosities for lensed image.
+
+        Parameters
+        ----------
+        source_resolution : int
+            number of pixels on each side of the source image
+        source_center : tuple, optional
+            coordinate offset in arcseconds of the center of the source
+            image, defaults to (0,0)
+        source_rotation : float, optional
+            rotation in degrees of the source image, defaults to 0
+        zoom_factor : float, optional
+            zoom factor of the source image, defaults to 1
+        filter_name : str
+            name of the JWST filter to use (uses luminosity lookup table if set to None)
+        star_by_star : boolean
+            Lenses galaxy from position data of individual stars if set to true,
+            otherwise creates a source image of the given resolution
+
+        Returns
+        -------
+        nonempty_pixels : numpy.ndarray
+            list of pixel indices on the image plane corresponding to pixels
+            that fall within the source image when traced back to the source plane
+        arc_pixels : numpy.ndarray
+            list of coordinates on the image plane corresponding to pixels that
+            fall within the source image when traced back to the source plane
+        polygons : numpy.ndarray
+            list of polygons on the source plane as an array of shape
+            (n,4,2)
+        luminosities : numpy.ndarray
+            array of luminosity values in Jy/arcsec^2
+        """
+
         # create source grid
         source_grid = self.galaxy.grid(source_resolution, zoom_factor)
 
@@ -278,16 +252,54 @@ class Observation:
         )
         polygons = get_traced_pixels(source_grid, self.traced_pixel_corners, nonempty_pixels)
 
-        # if star_by_star:
-        #     x_viewed = self.galaxy.positions[:,0]
-        #     y_viewed = self.galaxy.positions[:,1]
-        #     flux = self.galaxy
-        luminosities = get_traced_luminosities(
-            transformed_galaxy_image,
-            source_grid,
-            self.traced_pixel_corners,
-            nonempty_pixels,
-        )
+        if star_by_star:
+            # rotate and shift positions
+            theta = np.radians(source_rotation)
+            c, s = np.cos(theta), np.sin(theta)
+            R = np.array(((c, -s), (s, c)))
+            positions = np.dot(self.galaxy.positions[:, 0:2], R)
+            x_viewed = ang_size(positions[:, 0], self.galaxy.redshift) - source_center[0]
+            y_viewed = ang_size(positions[:, 1], self.galaxy.redshift) - source_center[1]
+
+            # compute fluxes
+            if filter_name is None:
+                flux = zshifted_flux_jy(
+                    lum_look_up_table(
+                        stellar_ages=self.galaxy.ages * 1e6,
+                        table_link=str(files("silmaril.data").joinpath("l1500_inst_e.txt")),
+                        column_idx=1,
+                        log=False,
+                    ),
+                    self.galaxy.luminosity_distance,
+                )
+            else:
+                flux = zshifted_flux_jy(
+                    lum_lookup_filtered(
+                        stellar_ages=self.galaxy.ages,
+                        z=self.galaxy.redshift,
+                        table_file=None,
+                        filter_name=filter_name,
+                    ),
+                    self.galaxy.luminosity_distance,
+                )
+            luminosities = traced_luminosities_from_stars(
+                x_viewed, y_viewed, flux, source_grid, self.traced_pixel_corners, nonempty_pixels
+            )
+
+        else:
+            # create source image
+            galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor, filter_name)
+            galaxy_pixel_scale = self.galaxy.pixel_scale(source_resolution, zoom_factor)
+            # rotate source image
+            transformed_galaxy_image = transform_image(
+                galaxy_image, galaxy_pixel_scale, source_rotation, source_center
+            )
+            luminosities = get_traced_luminosities(
+                transformed_galaxy_image,
+                source_grid,
+                self.traced_pixel_corners,
+                nonempty_pixels,
+            )
 
         return nonempty_pixels, arc_pixels, polygons, luminosities
 
@@ -299,6 +311,8 @@ class Observation:
         source_center=(0, 0),
         source_rotation=0,
         zoom_factor=1,
+        filter_name=None,
+        star_by_star=False,
         norm=None,
     ):
         """Plot the lensed galaxy as seen by the detector.
@@ -318,6 +332,11 @@ class Observation:
             rotation in degrees of the source image, defaults to 0
         zoom_factor : float, optional
             zoom factor of the source image, defaults to 1
+        filter_name : str
+            name of the JWST filter to use (uses luminosity lookup table if set to None)
+        star_by_star : boolean
+            Lenses galaxy from position data of individual stars if set to true,
+            otherwise creates a source image of the given resolution
         norm : matplotlib.colors.Normalize, optional
             normalization of the image, defaults to None
 
@@ -338,9 +357,11 @@ class Observation:
                 background,
                 noise,
                 source_resolution,
+                filter_name,
                 source_center,
                 source_rotation,
                 zoom_factor,
+                star_by_star,
             ),
             cmap="gray",
             norm=norm,
@@ -372,7 +393,7 @@ def nonempty_pixel_indices(traced_pixel_corners, source_x_range, source_y_range)
 
     Returns
     -------
-    np.ndarray
+    nonempty_pixels : np.ndarray
         list of pixel indices
     """
     image_pix = traced_pixel_corners.shape[0] - 1  # number of pixels on each side of the image
@@ -409,9 +430,12 @@ def get_arc_pixels(source_grid, traced_pixel_corners, image_plane, nonempty_pixe
 
     Returns
     -------
-    tuple(numpy.ndarray,numpy.ndarray)
-        two element tuple consisting of a list of pixel indices and a
-        list of pixel coordinates
+    nonempty_pixels : numpy.ndarray
+        list of pixel indices on the image plane corresponding to pixels
+        that fall within the source image when traced back to the source plane
+    arc_pixels : numpy.ndarray
+        list of coordinates on the image plane corresponding to pixels that
+        fall within the source image when traced back to the source plane
     """
 
     if nonempty_pixels is None:
@@ -442,7 +466,7 @@ def get_traced_pixels(source_grid, traced_pixel_corners, nonempty_pixels=None):
 
     Returns
     -------
-    numpy.ndarray
+    polygons : numpy.ndarray
         list of polygons on the source plane as an array of shape
         (n,4,2)
     """
@@ -483,12 +507,12 @@ def get_traced_luminosities(source_image, source_grid, traced_pixel_corners, non
         grid of source plane coordinates of the corners of each pixel on
         the image plane
     nonempty_pixels : np.ndarray
-        list of indices of pixels on the image plane that fall on the 
+        list of indices of pixels on the image plane that fall on the
         source image when traced back to the source plane
 
     Returns
     -------
-    numpy.ndarray
+    luminosities : numpy.ndarray
         array of luminosity values in Jy/arcsec^2
     """
     x = source_grid.x
@@ -555,7 +579,9 @@ def get_traced_luminosities(source_image, source_grid, traced_pixel_corners, non
     return lum
 
 
-def traced_luminosities_from_stars(x_viewed,y_viewed,flux,source_grid,traced_pixel_corners, nonempty_pixels=None):
+def traced_luminosities_from_stars(
+    x_viewed, y_viewed, flux, source_grid, traced_pixel_corners, nonempty_pixels=None
+):
     """
     Lenses the given source galaxy directly from particle data and returns a 2d array of luminosity values corresponding to
     pixels on the image plane.
@@ -572,44 +598,42 @@ def traced_luminosities_from_stars(x_viewed,y_viewed,flux,source_grid,traced_pix
         grid of source plane coordinates of the corners of each pixel on
         the image plane
     nonempty_pixels : np.ndarray
-        list of indices of pixels on the image plane that fall on the 
+        list of indices of pixels on the image plane that fall on the
         source image when traced back to the source plane
 
     Returns
     -------
-    numpy.ndarray
+    luminosities : numpy.ndarray
         array of luminosity values in Jy/arcsec^2
     """
     x = source_grid.x
     y = source_grid.y
 
+    source_x_range = [np.min(x), np.max(x)]
+    source_y_range = [np.min(y), np.max(y)]
+
     if nonempty_pixels is None:
-        source_x_range = [np.min(source_grid.x), np.max(source_grid.x)]
-        source_y_range = [np.min(source_grid.y), np.max(source_grid.y)]
         nonempty_pixels = nonempty_pixel_indices(
             traced_pixel_corners,
             nb.typed.List(source_x_range),
             nb.typed.List(source_y_range),
         )
 
-    source_x_range = [np.min(x),np.max(x)]
-    source_y_range = [np.min(y),np.max(y)]
-
     # transform coordinates
-    source_center = [np.sum(source_x_range)/2,np.sum(source_y_range)/2] 
-    x_viewed = x_viewed + source_center[0]
-    y_viewed = y_viewed + source_center[1]
-    
+    source_center = [np.sum(source_x_range) / 2, np.sum(source_y_range) / 2]
+    x_viewed = -x_viewed / 3600 + source_center[0]
+    y_viewed = y_viewed / 3600 + source_center[1]
+
     lum = np.zeros(len(nonempty_pixels))
 
     for r in range(len(nonempty_pixels)):
         i, j = nonempty_pixels[r]
-        top_left = traced_pixel_corners[i,j]
-        top_right = traced_pixel_corners[i+1,j]
-        bottom_right = traced_pixel_corners[i+1,j+1]
-        bottom_left = traced_pixel_corners[i,j+1]
+        top_left = traced_pixel_corners[i, j]
+        top_right = traced_pixel_corners[i + 1, j]
+        bottom_right = traced_pixel_corners[i + 1, j + 1]
+        bottom_left = traced_pixel_corners[i, j + 1]
 
-        vertices = [top_left,top_right,bottom_right,bottom_left]
+        vertices = [top_left, top_right, bottom_right, bottom_left]
 
         traced_pixel = path.Path(vertices)
 
@@ -619,7 +643,9 @@ def traced_luminosities_from_stars(x_viewed,y_viewed,flux,source_grid,traced_pix
         x_max = max([v[0] for v in vertices])
         y_max = max([v[1] for v in vertices])
 
-        condition = (x_viewed > x_min) & (x_viewed < x_max) & (y_viewed > y_min) & (y_viewed < y_max)
+        condition = (
+            (x_viewed > x_min) & (x_viewed < x_max) & (y_viewed > y_min) & (y_viewed < y_max)
+        )
 
         if condition.sum() == 0:
             lum[r] = 0
@@ -633,7 +659,10 @@ def traced_luminosities_from_stars(x_viewed,y_viewed,flux,source_grid,traced_pix
             if len(luminosity_values) == 0:
                 lum[r] = 0
             else:
-                polygon_area = abs(np.linalg.det([top_left-bottom_left,bottom_right-bottom_left]))
-                lum[r] = np.sum(luminosity_values)/polygon_area
-    
+                polygon_area = (
+                    abs(np.linalg.det([top_left - bottom_left, bottom_right - bottom_left]))
+                    * 3600**2
+                )
+                lum[r] = np.sum(luminosity_values) / polygon_area
+
     return lum

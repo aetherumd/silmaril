@@ -1,4 +1,4 @@
-﻿lens
+lens
 ====
 
 .. automodule:: silmaril.lens

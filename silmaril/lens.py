@@ -1,9 +1,9 @@
 """
 Module containing the Lens class
 """
+
 from astropy.wcs.utils import proj_plane_pixel_scales
 from astropy.cosmology import FlatLambdaCDM
-from astropy.coordinates import SkyCoord
 from scipy.ndimage import map_coordinates
 from .utilities import *
 
@@ -22,9 +22,7 @@ class Lens:
     redshift : float
         redshift of the lensing cluster
     unit : str, optional
-
-
-    :unit: units of the deflection angles (options are "arcseconds" and "pixels"), defaults to "arcseconds"
+        units of the deflection angles (options are "arcseconds" and "pixels"), defaults to "arcseconds"
 
     Attributes
     ----------
@@ -104,9 +102,7 @@ class Lens:
 
         return abs(1 - 0.5 * (dxdx + dydy))
 
-    def magnification_line(
-        self, grid, source_redshift, threshold=500
-    ):
+    def magnification_line(self, grid, source_redshift, threshold=500):
         """Returns a list of points in the image plane with magnification greater than a given threshold.
 
         Parameters
@@ -128,12 +124,7 @@ class Lens:
         image_plane_points = grid.as_list_of_points()
         return image_plane_points[image_plane_magnification.flatten() > threshold]
 
-    def caustic(
-        self,
-        image_plane_grid,
-        source_redshift,
-        threshold=500
-    ):
+    def caustic(self, image_plane_grid, source_redshift, threshold=500):
         """Returns a list of points on the source plane corresponding to the caustic of the lensing cluster.
         The caustic is computed by ray tracing the points on the magnification line back to the source plane.
 
@@ -152,9 +143,7 @@ class Lens:
         numpy.ndarray
             list of points on the caustic
         """
-        image_plane_points = self.magnification_line(
-            image_plane_grid, source_redshift, threshold
-        )
+        image_plane_points = self.magnification_line(image_plane_grid, source_redshift, threshold)
         source_plane_points = self.trace_points(image_plane_points, source_redshift)
         return source_plane_points
 
@@ -178,6 +167,8 @@ class Lens:
 
         # convert coordinate grids into list of points
         image_plane_points_world = grid.as_list_of_points()
+
+        # convert world to pixel coordinates
         image_plane_points_pix = self.wcs.all_world2pix(
             image_plane_points_world, 0, ra_dec_order=True
         )
@@ -190,10 +181,12 @@ class Lens:
             self.y_deflections, np.flip(image_plane_points_pix.T, axis=0), order=1
         )
 
+        # convert pixel coordinates back to world coordinates
         traced_points_x, traced_points_y = self.wcs.all_pix2world(
             traced_points_x, traced_points_y, 0, ra_dec_order=True
         )
 
+        # reshape into 2d array
         n = grid.n
         traced_points_x = np.reshape(traced_points_x, (n, -1))
         traced_points_y = np.reshape(traced_points_y, (n, -1))
@@ -206,7 +199,7 @@ class Lens:
         Parameters
         ----------
         points : numpy.ndarray
-            list of points to trace given as an array of shape (n,2)
+            list of points to trace given in world coordinates as an array of shape (n,2)
         source_redshift : float
             redshift of the source
 

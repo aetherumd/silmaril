@@ -28,6 +28,7 @@
    :template: custom-module-template.rst
    :recursive:
 
+   ~silmaril.data
    ~silmaril.galaxy
    ~silmaril.imaging
    ~silmaril.lens

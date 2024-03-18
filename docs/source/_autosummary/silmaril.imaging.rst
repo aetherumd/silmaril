@@ -1,4 +1,4 @@
-﻿imaging
+imaging
 =======
 
 .. automodule:: silmaril.imaging
@@ -19,6 +19,7 @@
       get_traced_luminosities
       get_traced_pixels
       nonempty_pixel_indices
+      traced_luminosities_from_stars
    
    
 
@@ -31,7 +32,6 @@
       :template: custom-class-template.rst
    
       Detector
-      Grid
       Observation
    
    

@@ -6,7 +6,7 @@
 Overview
 ========
 
-`silmaril` is a python package for simulating gravitationally lensed observations of high-redshift galaxies.
+`silmaril <https://github.com/syp2001/silmaril>`_ is a python package for simulating gravitationally lensed observations of high-redshift galaxies.
 
 
 Installation
@@ -18,6 +18,11 @@ Clone the repository from github
    git clone https://github.com/syp2001/silmaril.git
 
 Install using pip from within the cloned repo
+
+.. code-block:: bash
+
+   cd silmaril
+
 
 .. code-block:: bash
 
@@ -47,6 +52,7 @@ API Reference
    ~silmaril.galaxy
    ~silmaril.imaging
    ~silmaril.lens
+   ~silmaril.utilities
 
 Indices and tables
 ==================

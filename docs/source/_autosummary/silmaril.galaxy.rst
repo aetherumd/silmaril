@@ -1,4 +1,4 @@
-﻿galaxy
+galaxy
 ======
 
 .. automodule:: silmaril.galaxy
