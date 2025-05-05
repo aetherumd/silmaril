@@ -10,6 +10,7 @@ def get_filter(filter_name: str = "None"):
             dtype = float,
             skiprows=1,
         )
+        filter_data[:,0] = [x*(10**4) for x in filter_data[:,0]]
         return filter_data[:, 0], filter_data[:,1]
     except FileNotFoundError:
         print(("File silmaril\\data\\mean_throughputs\\"+ filter_name + "_mean_system_throughput.txt does not exist"))
@@ -40,7 +41,7 @@ def get_ages(path:str = "Muspelheim"):
             temp = ages[i][j+1] - ages[i][j]
             if (temp < del_t):
                 del_t = temp
-    return t_max, t_min, del_t
+    return ages, t_max, t_min, del_t
 
 def get_files(path:str = "Muspelheim"):
     file_list = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
