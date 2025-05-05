@@ -95,7 +95,7 @@ def integrate_function(func, a, b, num_points=1000):
     y = func(x)
     return np.trapz(y, x)
 
-def get_flux():
+def get_flux(redshift, filter_name):
     
     all_museplheim_files = get_files('./data/muspelheim_files')
 
@@ -138,7 +138,8 @@ def get_flux():
                 curr_line = lines[i].strip()
                 lambda_x = curr_line.split()[0]
                 flux = curr_line.split()[1]
-                lamda_array.append(lambda_x)
+                #need to account for redshift in wavelength: lambda = lambda * (1 + redshift)
+                lamda_array.append((lambda_x * (1 + redshift)))
                 flux_array.append(flux)
             i += 1
         #add last iteration of track point to database
