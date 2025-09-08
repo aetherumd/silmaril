@@ -1,45 +1,6 @@
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-from scipy.interpolate import interp1d
-#import pandas as pd
-from importlib.resources import files
 import os
 
-def get_files(directory):
-    return [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".txt")]
-
-def construct_lookup_table (massFiles, filterSelecto, zr):
-
-    numberOfMasses = readNumMasses(massFiles)
-    numberOfMasses = len(get_files(".data/muspelheim_files/"))
-    numberOfAges = readNumberOfAges()
-    numberOfAges
-
-    lookuptable = np.zeros((numberOfMasses, numberOfAges))
-
-    lamdaList = getLamdaList()
-    filter = get_filter(filter_name)
-
-    for m in range(numberOfMasses):
-        for n in range(numberOfAges):
-            lookuptable[m][n] = computeFlux(lamdaList, filter, n, m)
-
-    return lookuptable
-"""
-def make_table(z, filter_name, tp):
-
-    L, T = get_filter(filter_name)
-    F = get_flux()
-    age, mass = get_age_and_mass(tp)
-
-
-    lookup_table = np.empty((len(age)+1, len(F)))
-    lookup_table = pd.DataFrame(test_table, index=age, columns=mass)
-
-    for i in age:
-        for j in mass:
-            lookup_table[i][j] = get_average_flux(L,T,F,z)
-"""
 def get_filter(filter_name: str = "None"):
     #str(files("silmaril.data.mean_throughputs").joinpath(filter_name + "_mean_system_throughput.txt"))
     try:
@@ -54,65 +15,8 @@ def get_filter(filter_name: str = "None"):
         print(("File silmaril\\data\\mean_throughputs\\"+ filter_name + "_mean_system_throughput.txt does not exist"))
         pass
 
-def compute_luminosity(lowerBound, upperBound, lamd_datapoints, T_datapoints):
-
-    lamd_func, T_func = make_vectors_similar(lamd_datapoints, T_datapoints)
-
-    # make new function
-    top_integrand = lambda x: np.dot(lamd_func(x), T_func(x), x)
-    bottom_integrand = lambda x: np.dot(x, lamd_func(x))
-    
-    filter_flux = integrate_function(top_integrand, lowerBound, upperBound)
-    flux = integrate_function(bottom_integrand, lowerBound, upperBound)
-
-    return filter_flux / flux
-
-def make_vectors_similar(vectorA, vectorB):
-    """
-    A_min = min(vectorA[0])
-    B_min = min(vectorB[0])
-    A_max = max(vectorA[0])
-    B_max = max(vectorB[0])
-    A_del = vectorA[0][1]-vectorA[0][0]
-    B_del = vectorB[0][1]-vectorB[0][0]
-
-    min = max(A_min, B_min)
-    max = min(A_max,B_max)
-    delta = min(A_del, B_del)
-
-    lamd = list(range(min, max+delta, delta))
-
-    A_interp = interp1d(vectorA[0], vectorA[1])
-    B_interp = interp1d(vecotrB[0], vectorB[1])
-
-    newA = A_interp(lamd)
-    newB = B_interp(lamd)
-    """
-        
-
-def integrate_function(func, a, b, num_points=1000):
-    """
-    Compute the definite integral of a function using the trapezoidal rule.
-    
-    Parameters:
-    -----------
-    func : callable
-        The function to integrate
-    a : float
-        Lower bound of integration
-    b : float
-        Upper bound of integration
-    num_points : int, optional
-        Number of points to use (default: 1000)
-    
-    Returns:
-    --------
-    float
-        The approximate value of the definite integral
-    """ 
-    x = np.linspace(a, b, num_points)
-    y = func(x)
-    return np.trapz(y, x)
+def get_files(directory):
+    return [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".txt")]
 
 def get_flux(redshift, filter_name):
     
@@ -154,13 +58,14 @@ def get_flux(redshift, filter_name):
                     mask = (lambda_values >= lam_min) & (lambda_values <= lam_max)
                     lam_sub = lambda_values[mask]
                     flux_sub = flux_values[mask]
-                    lam_interp = interp1d(lam_sub, lam_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
-                    flux_interp = interp1d(lam_sub, flux_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
+                    #lam_interp = interp1d(lam_sub, lam_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
+                    #flux_interp = interp1d(lam_sub, flux_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
                     # Evaluate interpolated values at filter_wavelength
-                    lam_on_filter = lam_interp(filter_wavelength)        # essentially == filter_wavelength
-                    flux_on_filter = flux_interp(filter_wavelength)      # flux resampled to filter grid
-                    integral_output = np.abs(np.trapz((lam_on_filter * flux_on_filter * filter_output), lam_on_filter))
+                    lam_on_filter = lam_sub        # essentially == filter_wavelength
+                    flux_on_filter = flux_sub     # flux resampled to filter grid
+                    integral_output = np.abs(np.trapz((lam_on_filter * flux_on_filter), lam_on_filter))
                     luminosity = integral_output / integral_filter
+                    #print("integral output", integral_output, "integral filter", integral_filter, " = luminosity:", luminosity)
                     #output = call_int(lambda_values, flux_values)
                     #database.append((zams_mass, curr_age, output))
                     database.append((zams_mass, curr_age, luminosity))
@@ -191,13 +96,12 @@ def get_flux(redshift, filter_name):
         mask = (lambda_values >= lam_min) & (lambda_values <= lam_max)
         lam_sub = lambda_values[mask]
         flux_sub = flux_values[mask]
-        lam_interp = interp1d(lam_sub, lam_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
-        flux_interp = interp1d(lam_sub, flux_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
         # Evaluate interpolated values at filter_wavelength
-        lam_on_filter = lam_interp(filter_wavelength)        # essentially == filter_wavelength
-        flux_on_filter = flux_interp(filter_wavelength)      # flux resampled to filter grid
-        integral_output = np.abs(np.trapz((lam_on_filter * flux_on_filter * filter_output), lam_on_filter))
+        lam_on_filter = filter_wavelength        # essentially == filter_wavelength
+        flux_on_filter = filter_wavelength      # flux resampled to filter grid
+        integral_output = np.abs(np.trapz((lam_on_filter * flux_on_filter), lam_on_filter))
         luminosity = integral_output / integral_filter
+        #print("integral output", integral_output, "integral filter", integral_filter, " = luminosity:", luminosity)
         database.append((zams_mass, curr_age, luminosity))
 
     masses = np.unique(unique_mass).astype(float)
@@ -214,9 +118,10 @@ def get_flux(redshift, filter_name):
         print("i:", i, "mass_idx:,", mass_idx, "age_idx", age_idx, "value:", value)
         grid[mass_idx, age_idx] = value
         i += 1
+    print(i)
     #create the interpolator
     #interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=np.nan)
     #query_point = (30, 0)
     #result = interpolator(query_point)
-
+    print("success")
     #print("Interpolated result:", result)
