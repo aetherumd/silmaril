@@ -24,7 +24,7 @@ def construct_lookup_table (massFiles, filterSelecto, zr):
 
     return lookuptable
 """
-def make_table(z, filter_name, tp):  
+def make_table(z, filter_name, tp):  a
 
     L, T = get_filter(filter_name)
     F = get_flux()
