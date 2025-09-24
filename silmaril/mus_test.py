@@ -101,9 +101,10 @@ def get_flux(redshift, filter_name):
         lam_sub = lambda_values[mask]
         flux_sub = flux_values[mask]
         # Evaluate interpolated values at filter_wavelength
-        flux_interp = RegularGridInterpolator((lam_sub,), flux_sub,bounds_error=False, fill_value=None)
-        lam_on_filter = filter_wavelength        # essentially == filter_wavelength
-        flux_on_filter = flux_interp(filter_wavelength)      # flux resampled to filter grid
+        lam_interp = interp1d(lam_sub, lam_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
+        flux_interp = interp1d(lam_sub, flux_sub, kind='linear', bounds_error=False, fill_value='extrapolate')
+        lam_on_filter = lam_interp(filter_wavelength)        # essentially == filter_wavelength
+        flux_on_filter = flux_interp(filter_wavelength)     # flux resampled to filter grid
         integral_output = np.abs(np.trapz((lam_on_filter * flux_on_filter), lam_on_filter))
         print(integral_output)
         luminosity = integral_output / integral_filter
