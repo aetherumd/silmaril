@@ -579,9 +579,7 @@ def get_traced_luminosities(source_image, source_grid, traced_pixel_corners, non
     return lum
 
 
-def traced_luminosities_from_stars(
-    x_viewed, y_viewed, flux, source_grid, traced_pixel_corners, nonempty_pixels=None
-):
+def traced_luminosities_from_stars(x_viewed, y_viewed, flux, source_grid, traced_pixel_corners, nonempty_pixels=None):
     """
     Lenses the given source galaxy directly from particle data and returns a 2d array of luminosity values corresponding to
     pixels on the image plane.

@@ -168,39 +168,54 @@ def convert_lum_to_magAB(luminosity, redshift, filter_name):
     return m_AB
 
 def get_pivot_lambda(filter_name):
-    #pivot values in (µm)
-    pivot_values = {
-        "F070W" : 0.705,
-        "F090W" : 0.902,
-        "F115W" : 1.154, 
-        "F140M" : 1.405,
-        "F150W" : 1.501, 
-        "F162M" : 1.627, 
-        "F164N" : 1.645, 
-        "F150W2" : 1.672, 
-        "F182M" : 1.845, 
-        "F187N" : 1.874, 
-        "F200W" : 1.988, 
-        "F210M" : 2.096, 
-        "F212N" : 2.121, 
-        "F250M" : 2.503, 
-        "F277W" : 2.776,
-        "F300M" : 2.996,
-        "F322W2" : 3.247, 
-        "F323N" : 3.237, 
-        "F335M" : 3.362, 
-        "F356W" : 3.565, 
-        "F360M" : 3.623, 
-        "F405N" : 4.053, 
-        "F410M" : 4.083, 
-        "F430M" : 4.281, 
-        "F444W" : 4.402, 
-        "F460M" : 4.630, 
-        "F466N" : 4.654, 
-        "F470N" : 4.708, 
-        "F480M" : 4.817
+    """
+    Returns the pivot wavelength (in microns) for a given JWST NIRCam filter.
+
+    Parameters
+    ----------
+    filter_name : str
+        The name of the filter (e.g., 'F070W', 'F200W', ...).
+
+    Returns
+    -------
+    float
+        Pivot wavelength in microns if found, otherwise raises KeyError.
+    """
+    # Use a constant for the pivot values dictionary to avoid redefining it each call
+    # The dictionary could also be moved outside the function for re-use and speed, but is kept here for encapsulation.
+    PIVOT_VALUES = {
+        "F070W": 0.705,
+        "F090W": 0.902,
+        "F115W": 1.154,
+        "F140M": 1.405,
+        "F150W": 1.501,
+        "F162M": 1.627,
+        "F164N": 1.645,
+        "F150W2": 1.672,
+        "F182M": 1.845,
+        "F187N": 1.874,
+        "F200W": 1.988,
+        "F210M": 2.096,
+        "F212N": 2.121,
+        "F250M": 2.503,
+        "F277W": 2.776,
+        "F300M": 2.996,
+        "F322W2": 3.247,
+        "F323N": 3.237,
+        "F335M": 3.362,
+        "F356W": 3.565,
+        "F360M": 3.623,
+        "F405N": 4.053,
+        "F410M": 4.083,
+        "F430M": 4.281,
+        "F444W": 4.402,
+        "F460M": 4.630,
+        "F466N": 4.654,
+        "F470N": 4.708,
+        "F480M": 4.817
     }
-    if filter_name in pivot_values:
-        return pivot_values[filter_name]
-    else:
-        return None
+    try:
+        return PIVOT_VALUES[filter_name]
+    except KeyError:
+        raise ValueError(f"Filter name '{filter_name}' not recognized. "
+                         f"Available filters are: {', '.join(PIVOT_VALUES.keys())}")
