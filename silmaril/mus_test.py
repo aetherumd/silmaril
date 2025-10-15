@@ -144,16 +144,30 @@ def get_flux(redshift, filter_name):
 
 
 def mus_tester(redshift, filter_name):
-    database = get_flux(redshift=redshift, filter_name=filter_name)
-    mag_data = []
-    for datum in database:
-        luminosity = convert_lum_to_magAB(datum[2], redshift, filter_name)
-        age = datum[1]
-        name = datum[3]
-        mag_data.append((age, luminosity, name))
-    for datum in mag_data:
-        if datum[0] == 0:
-            print(datum)
+    """
+    Test function that computes AB magnitudes for each data point in a flux database
+    at a given redshift and filter, and prints out those at age == 0.
+
+    Parameters
+    ----------
+    redshift : float
+        Redshift value for which to compute AB magnitudes.
+    filter_name : str
+        The JWST filter name to use for the test (e.g., "F070W").
+    """
+    flux_database = get_flux(redshift=redshift, filter_name=filter_name)
+    ab_magnitude_data = []
+    for entry in flux_database:
+        luminosity = entry[2]
+        stellar_age = entry[1]
+        filename = entry[3]
+        ab_magnitude = convert_lum_to_magAB(luminosity, redshift, filter_name)
+        ab_magnitude_data.append((stellar_age, ab_magnitude, filename))
+
+    # Print results where stellar_age == 0
+    for stellar_age, ab_magnitude, filename in ab_magnitude_data:
+        if stellar_age == 0:
+            print((stellar_age, ab_magnitude, filename))
 
 
 def convert_lum_to_magAB(luminosity, redshift, filter_name):
