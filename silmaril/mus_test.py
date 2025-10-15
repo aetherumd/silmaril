@@ -2,6 +2,10 @@ import numpy as np
 import os
 from scipy.interpolate import RegularGridInterpolator
 from scipy.interpolate import interp1d
+from astropy.cosmology import Planck18 as cosmo
+import astropy.units as u
+from astropy.cosmology import FlatLambdaCDM
+from astropy import units as u, constants as const
 
 
 def get_filter(filter_name: str = "None"):
@@ -72,7 +76,7 @@ def get_flux(redshift, filter_name):
                     #print("integral output", integral_output, "integral filter", integral_filter, " = luminosity:", luminosity)
                     #output = call_int(lambda_values, flux_values)
                     #database.append((zams_mass, curr_age, output))
-                    database.append((zams_mass, curr_age, luminosity))
+                    database.append((zams_mass, curr_age, luminosity, file_name))
                 #now set up for the next trackpoint
                 lamda_array = []
                 flux_array = []
@@ -109,7 +113,7 @@ def get_flux(redshift, filter_name):
         print(integral_output)
         luminosity = integral_output / integral_filter
         #print("integral output", integral_output, "integral filter", integral_filter, " = luminosity:", luminosity)
-        database.append((zams_mass, curr_age, luminosity))
+        database.append((zams_mass, curr_age, luminosity, file_name))
 
     masses = np.unique(unique_mass).astype(float)
     ages = np.unique(unique_age).astype(float)
@@ -117,7 +121,7 @@ def get_flux(redshift, filter_name):
     print(database[0])
     # Map data points to the grid
     i = 0
-    for mass, age, value in database:
+    for mass, age, value, name in database:
         mass_matches = np.where(np.isclose(masses, mass, rtol=1e-5))[0]
         age_matches = np.where(np.isclose(ages, age, rtol=1e-5))[0]
         mass_idx = mass_matches[0]
@@ -127,6 +131,8 @@ def get_flux(redshift, filter_name):
         i += 1
     print(i)
     grid = np.nan_to_num(grid, nan=0.0) #turning all the Nan's to 0.0's
+    return database
+    '''
     #create the interpolator    
     #interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=np.nan)
     interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=0.0)
@@ -134,4 +140,67 @@ def get_flux(redshift, filter_name):
     query_point = (10, 1493000.0)
     result = interpolator(query_point)
     print("success")
-    print("Interpolated result:", result)
+    print("Interpolated result:", result)'''
+
+
+def mus_tester(redshift, filter_name):
+    database = get_flux(redshift=redshift, filter_name=filter_name)
+    mag_data = []
+    for datum in database:
+        luminosity = convert_lum_to_magAB(datum[2], redshift, filter_name)
+        age = datum[1]
+        name = datum[3]
+        mag_data.append((age, luminosity, name))
+    for datum in mag_data:
+        if datum[0] == 0:
+            print(datum)
+
+
+def convert_lum_to_magAB(luminosity, redshift, filter_name):
+    luminosity = luminosity * u.erg / u.s / u.AA
+    #ΩM=0.3, ΩΛ=0.7, H0=70 km s-1 Mpc-1 cosmology
+    cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Om0=0.3)
+    d_l = cosmo.luminosity_distance(redshift).to(u.cm) # distance luminosity 
+    f_lambda = (luminosity / (4 * np.pi * d_l * d_l)).to(u.erg / (u.s * u.cm**2 * u.AA))
+    pivot_lambda = get_pivot_lambda(filter_name) * u.AA
+    f_nu = ((f_lambda * (pivot_lambda ** 2)) / const.c).to(u.erg / (u.s * u.cm**2 * u.Hz))
+    m_AB = -2.5 * np.log10(f_nu.value) - 48.60
+    return m_AB
+
+def get_pivot_lambda(filter_name):
+    #pivot values in (µm)
+    pivot_values = {
+        "F070W" : 0.705,
+        "F090W" : 0.902,
+        "F115W" : 1.154, 
+        "F140M" : 1.405,
+        "F150W" : 1.501, 
+        "F162M" : 1.627, 
+        "F164N" : 1.645, 
+        "F150W2" : 1.672, 
+        "F182M" : 1.845, 
+        "F187N" : 1.874, 
+        "F200W" : 1.988, 
+        "F210M" : 2.096, 
+        "F212N" : 2.121, 
+        "F250M" : 2.503, 
+        "F277W" : 2.776,
+        "F300M" : 2.996,
+        "F322W2" : 3.247, 
+        "F323N" : 3.237, 
+        "F335M" : 3.362, 
+        "F356W" : 3.565, 
+        "F360M" : 3.623, 
+        "F405N" : 4.053, 
+        "F410M" : 4.083, 
+        "F430M" : 4.281, 
+        "F444W" : 4.402, 
+        "F460M" : 4.630, 
+        "F466N" : 4.654, 
+        "F470N" : 4.708, 
+        "F480M" : 4.817
+    }
+    if filter_name in pivot_values:
+        return pivot_values[filter_name]
+    else:
+        return None
