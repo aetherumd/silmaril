@@ -6,6 +6,8 @@ from astropy.cosmology import Planck18 as cosmo
 import astropy.units as u
 from astropy.cosmology import FlatLambdaCDM
 from astropy import units as u, constants as const
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 
 
 def get_filter(filter_name: str = "None"):
@@ -16,7 +18,7 @@ def get_filter(filter_name: str = "None"):
             dtype = float,
             skiprows=1,
         )
-        filter_data[:,0] = [x*(10**4) for x in filter_data[:,0]]
+        filter_data[:,0] = [x*(1e4) for x in filter_data[:,0]]
         return np.array(filter_data[:, 0]), np.array(filter_data[:,1])
     except FileNotFoundError:
         print(("File silmaril\\data\\mean_throughputs\\"+ filter_name + "_mean_system_throughput.txt does not exist"))
@@ -57,7 +59,7 @@ def get_flux(redshift, filter_name):
                 if i != 0:
                     lambda_values = np.array(lamda_array)
                     flux_values = np.array(flux_array)
-                    filter_wavelength, filter_output = get_filter(filter_name)
+                    '''filter_wavelength, filter_output = get_filter(filter_name)
                     integral_filter = np.abs(np.trapz(filter_output * filter_wavelength, filter_wavelength))
                     
                     #shorten lambda_values to be over filter_wavelength
@@ -72,11 +74,12 @@ def get_flux(redshift, filter_name):
                     lam_on_filter = lam_interp(filter_wavelength)        # essentially == filter_wavelength
                     flux_on_filter = flux_interp(filter_wavelength)     # flux resampled to filter grid
                     integral_output = np.abs(np.trapz((lam_on_filter * flux_on_filter), filter_wavelength))
-                    luminosity = integral_output / integral_filter
+                    luminosity = integral_output / integral_filter'''
+                    luminosity = calc_luminosity(lambda_values, flux_values, filter_name)/ (1+ redshift)
                     #print("integral output", integral_output, "integral filter", integral_filter, " = luminosity:", luminosity)
                     #output = call_int(lambda_values, flux_values)
                     #database.append((zams_mass, curr_age, output))
-                    database.append((zams_mass, curr_age, luminosity, file_name))
+                    database.append((zams_mass, curr_age, luminosity, file_name)) 
                 #now set up for the next trackpoint
                 lamda_array = []
                 flux_array = []
@@ -96,7 +99,7 @@ def get_flux(redshift, filter_name):
         #add last iteration of track point to database
         lambda_values = np.array(lamda_array)
         flux_values = np.array(flux_array)
-        filter_wavelength, filter_output = get_filter(filter_name)
+        '''filter_wavelength, filter_output = get_filter(filter_name)
         integral_filter = np.abs(np.trapz(filter_output * filter_wavelength, filter_wavelength))
         #shorten lambda_values to be over filter_wavelength
         lam_min = filter_wavelength.min()
@@ -111,7 +114,8 @@ def get_flux(redshift, filter_name):
         flux_on_filter = flux_interp(filter_wavelength)     # flux resampled to filter grid
         integral_output = np.abs(np.trapz((lam_on_filter * flux_on_filter), lam_on_filter))
         print(integral_output)
-        luminosity = integral_output / integral_filter
+        luminosity = integral_output / integral_filter'''
+        luminosity = calc_luminosity(lambda_values, flux_values, filter_name) / (1+ redshift)
         #print("integral output", integral_output, "integral filter", integral_filter, " = luminosity:", luminosity)
         database.append((zams_mass, curr_age, luminosity, file_name))
 
@@ -126,46 +130,74 @@ def get_flux(redshift, filter_name):
         age_matches = np.where(np.isclose(ages, age, rtol=1e-5))[0]
         mass_idx = mass_matches[0]
         age_idx = age_matches[0]
-        print("i:", i, "mass_idx:,", mass_idx, "age_idx", age_idx, "value:", value)
         grid[mass_idx, age_idx] = value
         i += 1
     print(i)
     grid = np.nan_to_num(grid, nan=0.0) #turning all the Nan's to 0.0's
-    return database
-    '''
+    return grid, masses, ages
+
+
+def grid_interpolator(grid, masses, ages, query_point):
+    mass_min, mass_max = masses.min(), masses.max()
+    age_min, age_max = ages.min(), ages.max()
+    
+    print("Mass range:", mass_min, "to", mass_max)
+    print("Age range:", age_min, "to", age_max)
     #create the interpolator    
     #interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=np.nan)
     interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=0.0)
     #example query point
-    query_point = (10, 1493000.0)
+    if query_point[0] < mass_min or query_point[0] > mass_max or query_point[1] < age_min or query_point[1] > age_max:
+        raise ValueError(f"Query point {query_point} is outside grid bounds.")
     result = interpolator(query_point)
     print("success")
-    print("Interpolated result:", result)'''
+    print("Interpolated result:", result)
 
+def plot_grid(grid, masses, ages):
+    valid_idx = np.where(grid != 0)
+    
+    # Flatten everything to make a scatter plot
+    x = masses[valid_idx[0]]  # mass coordinates
+    y = ages[valid_idx[1]]
+    lum = grid[valid_idx]
+
+    # Scatter plot of just mass vs age
+    plt.figure(figsize=(8,6))
+    scatter = plt.scatter(y, x,c=lum,cmap='plasma', norm=LogNorm(), s=30,alpha=0.5)
+    plt.colorbar(scatter, label='Luminosity (Log)')
+    plt.xscale('log')
+    plt.xlabel('Age (Log)')
+    plt.yscale('log')
+    plt.ylabel('Mass')
+    plt.title('Age vs Mass Data Points')
+    plt.grid(True)
+    plt.show()
 
 def mus_tester(redshift, filter_name):
     database = get_flux(redshift=redshift, filter_name=filter_name)
     mag_data = []
     for datum in database:
-        luminosity = convert_lum_to_magAB(datum[2], redshift, filter_name)
+        magAB = convert_lum_to_magAB(datum[2], redshift, filter_name)
         age = datum[1]
         name = datum[3]
-        mag_data.append((age, luminosity, name))
+        mag_data.append((age, magAB, name))
+    i = 0
     for datum in mag_data:
-        if datum[0] == 0:
-            print(datum)
+        if datum[2] == 'data/muspelheim_files/SED_BoOST22_SMC_f250-100.smc_grid_interpolation.txt':
+            print(("Age:", datum[0], "Mag AB:", datum[1]))
+            i += 1
 
 
 def convert_lum_to_magAB(luminosity, redshift, filter_name):
-    luminosity = luminosity * u.erg / u.s / u.AA
     #ΩM=0.3, ΩΛ=0.7, H0=70 km s-1 Mpc-1 cosmology
-    cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Om0=0.3)
-    d_l = cosmo.luminosity_distance(redshift).to(u.cm) # distance luminosity 
-    f_lambda = (luminosity / (4 * np.pi * d_l * d_l)).to(u.erg / (u.s * u.cm**2 * u.AA))
-    pivot_lambda = get_pivot_lambda(filter_name) * u.AA
-    f_nu = ((f_lambda * (pivot_lambda ** 2)) / const.c).to(u.erg / (u.s * u.cm**2 * u.Hz))
-    m_AB = -2.5 * np.log10(f_nu.value) - 48.60
+    cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
+    d_l = cosmo.luminosity_distance(redshift) * 1e6 * 3.15e18 # distance luminosity -> parsec -> cm
+    f_lambda = (luminosity / (4 * np.pi * d_l.value * d_l.value))
+    pivot_lambda = get_pivot_lambda(filter_name) * 1e4
+    f_nu = (f_lambda * (pivot_lambda)) * pivot_lambda * 1e-10 / 3e8
+    m_AB = -2.5 * np.log10(f_nu) - 48.60
     return m_AB
+
 
 def get_pivot_lambda(filter_name):
     #pivot values in (µm)
@@ -204,3 +236,17 @@ def get_pivot_lambda(filter_name):
         return pivot_values[filter_name]
     else:
         return None
+    
+def calc_luminosity(lamda_array, flux_array, filter_name):
+    tolerance = 1e-10
+    filter_wavelength, filter_output = get_filter(filter_name)
+    mask = (lamda_array >= filter_wavelength.min()) & (lamda_array <= filter_wavelength.max())
+
+
+    flux_interp = interp1d(lamda_array[mask], flux_array[mask] * lamda_array[mask], kind = "linear", fill_value = "extrapolate")
+    resultH = flux_interp(filter_wavelength) * filter_output
+    integralH = np.abs(np.trapz(resultH, filter_wavelength))
+    integral_filter = np.abs(np.trapz(filter_output * filter_wavelength, filter_wavelength))
+    luminosity = integralH / integral_filter
+
+    return luminosity
