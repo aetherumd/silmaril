@@ -2,7 +2,6 @@ import astropy
 import random as r
 from astropy.io import fits
 import matplotlib as mpl
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import math as m
@@ -11,9 +10,10 @@ import os
 from importlib.resources import files
 import sample_IMF
 
-folder_path = "C:/Users/josep/Documents/Python Projects"
+folder_path = "C:/Users/josep/Documents/GitHub/silmaril/silmaril/data/relics-glafic-data"
 scale = 1000
 spread = 375
+N = 10**(3)
 
 def pos1(x):
   if(x != 0):
@@ -29,16 +29,15 @@ with open(folder_path + "/starburst.txt", 'w') as file:
   xs = np.empty
   ys = np.empty
   zs = np.empty
-  masses = np.empty
+  masses = sample_IMF.sample_massive_stars(N)
   t_sims = np.empty
   reds = np.empty
-  for i in range (10**(3)):
+  for i in range (N):
     IDs = np.append(IDs, 0)
     ages = np.append(ages, r.randrange(1, 10**2, 1))
     xs = np.append(xs, pos1(r.randrange(-scale, scale, 1)))
     ys = np.append(ys, pos1(r.randrange(-scale, scale, 1)))
     zs = np.append(zs, pos1(r.randrange(-scale, scale, 1)))
-    masses = np.append(masses, 0.1*r.randrange(0, 100, 1))
     file.write(str(IDs[i]) + " " + str(ages[i]) + " " + str(xs[i]) + " " + str(ys[i]) + " " + str(zs[i]) + " " + str(masses[i]) + "\n")
 
 wcs = astropy.wcs.WCS(fits.open(folder_path + '/hlsp_relics_model_model_whl0137-08_glafic_v1_x-arcsec-deflect.fits')[0].header)
