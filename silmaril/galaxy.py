@@ -11,6 +11,7 @@ from astropy.cosmology import FlatLambdaCDM
 from .utilities import Grid
 from importlib.resources import files
 import scipy
+from .sample_IMF import sample_massive_stars
 
 
 class Galaxy:
@@ -72,6 +73,7 @@ class Galaxy:
             ]
             self.ages = self.data[:, 1]
             self.positions = self.data[:, 2:5]
+            self.masses = self.data[:,5]
         elif data_format == "fid":
             self.data_columns = [
                 "t_sim[Myr]",
@@ -91,6 +93,7 @@ class Galaxy:
             ]
             self.ages = self.data[:, 0]
             self.positions = self.data[:, 7:10]
+            self.masses = self.data[:,13]
         else:
             raise ValueError("Invalid format " + str(format))
 
@@ -132,7 +135,7 @@ class Galaxy:
 
         Returns
         -------
-        imaging.Grid
+        utilities.Grid
             grid of points on the sky
         """
         return Grid(self.center, resolution, self.pixel_scale(resolution, zoom_factor))
@@ -170,13 +173,14 @@ class Galaxy:
                     table_link=str(files("silmaril.data").joinpath("l1500_inst_e.txt")),
                     column_idx=1,
                     log=False,
+                    stellar_masses=self.masses,
                 ),
                 self.luminosity_distance,
             )
         else:
             flux = zshifted_flux_jy(
                 lum_lookup_filtered(
-                    stellar_ages=ages, z=self.redshift, table_file=None, filter_name=filter_name
+                    stellar_ages=ages, z=self.redshift, table_file=None, filter_name=filter_name, stellar_masses=self.masses
                 ),
                 self.luminosity_distance,
             )
@@ -334,8 +338,7 @@ def lum_lookup_filtered(
     z,
     table_file: str,
     filter_name="F200W",
-    stellar_masses=10,
-    m_gal=1e6,
+    stellar_masses=None,
 ):
     """
     Computes luminosities from galaxy spectrum data using the given filter.
@@ -361,6 +364,16 @@ def lum_lookup_filtered(
         returns the luminosity of the individual stars, default UV luminosity
 
     """
+
+    if stellar_masses is None:
+        stellar_mass = 10
+        m_gal = 1e6
+    else:
+        stellar_mass = np.average(stellar_masses)
+        m_gal = len(stellar_ages)*stellar_mass
+
+    stellar_masses = sample_massive_stars(len(stellar_ages), stellar_mass)
+
     filter_data = np.loadtxt(
         str(
             files("silmaril.data.mean_throughputs").joinpath(
@@ -390,16 +403,15 @@ def lum_lookup_filtered(
 
     lookup = scipy.interpolate.CubicSpline(ages, mean_phot_rate)
 
-    return lookup(stellar_ages) * (stellar_masses / m_gal)
+    return [lookup(a) * (m / m_gal) for a, m in zip(stellar_ages, stellar_masses)]
 
 
 def lum_look_up_table(
     stellar_ages: float,
-    stellar_masses=10,
+    stellar_masses=None,
     table_link: str = os.path.join("..", "starburst", "l1500_inst_e.txt"),
     column_idx: int = 1,
     log=False,
-    m_gal=1e6,
 ):
     """
     given stsci link and ages, returns likely (log) luminosities
@@ -445,6 +457,16 @@ def lum_look_up_table(
 
     """
 
+    if stellar_masses is None:
+        stellar_mass = 10
+        m_gal = 1e6
+    else:
+        stellar_mass = np.average(stellar_masses)
+        m_gal = len(stellar_ages)*stellar_mass
+
+    stellar_masses = sample_massive_stars(len(stellar_ages), stellar_mass)
+
+
     if "www" in table_link:
         df = pd.read_csv(table_link, delim_whitespace=True, header=None)
         data = df.to_numpy().astype(float)
@@ -472,7 +494,7 @@ def lum_look_up_table(
     if log is True:
         lum_scaled = luminosities + np.log10(stellar_masses / m_gal)
     else:
-        lum_scaled = luminosities * (stellar_masses / m_gal)
+        lum_scaled = [l * (m / m_gal) for l, m in zip(luminosities, stellar_masses)]
 
     return lum_scaled
 

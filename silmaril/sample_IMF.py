@@ -173,28 +173,3 @@ def do_sample(m_particle=10.0):
         print()
     
     print(f"\ntotal mass in sampled massive stars = {np.sum(m_collection)} (should be near {m_particle * mass_frac_in_massive_stars * N})")
-
-
-if __name__ == "__main__":
-
-    # test_distribution()
-    # do_sample()
-
-    N=1000
-    res=sample_massive_stars(N,m_particle=10.0)
-    print(res)
-    lres=np.log10(np.array(res))
-    y,x_e=np.histogram(lres,bins=20,range=(np.log10(4),np.log10(200)))
-    x_c=(x_e[1:]+x_e[:-1])/2.0
-    plt.plot(x_c,y,'or')
-
-    N=10000
-    res=sample_massive_stars(N,m_particle=10.0)
-    lres=np.log10(np.array(res))
-    y,x_e=np.histogram(lres,bins=20,range=(np.log10(4),np.log10(200)))
-    x_c=(x_e[1:]+x_e[:-1])/2.0
-    plt.plot(x_c,y,'og')
-
-    plt.xscale('linear')
-    plt.yscale('log')
-    plt.show()
