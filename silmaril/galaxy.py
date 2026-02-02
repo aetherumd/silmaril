@@ -52,6 +52,8 @@ class Galaxy:
         angular size of the galaxy in arcseconds
     luminosity_distance
         luminosity distance of the galaxy in pc
+    masses
+        array of masses in solar masses
     """
 
     def __init__(self, filename, center, redshift, size, data_format="pos"):
