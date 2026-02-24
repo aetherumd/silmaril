@@ -56,6 +56,41 @@ class Galaxy:
     def __init__(self, filename, center, redshift, size, data_format="pos"):
         # load particle data
         self.data = np.loadtxt(filename)
+
+        # stuff i had to add to integrate custom images
+        epf = [
+            ("particle_family", "b"),
+            ("particle_tag", "b"),
+            ("particle_birth_epoch", "d"),
+            ("particle_metallicity", "d"),
+        ]
+        self.data_yt = yt.load(filename, epf)
+        self.ad = self.data_yt.all_data()
+        # these might be lines/wavelengths relevant to our specific test case.
+        # in which case this will absolutely not be in the final product
+        lines=["H1_6562.80A","O1_1304.86A","O1_6300.30A","O2_3728.80A","O2_3726.10A",
+       "O3_1660.81A","O3_1666.15A","O3_4363.21A","O3_4958.91A","O3_5006.84A", 
+       "He2_1640.41A","C2_1335.66A","C3_1906.68A","C3_1908.73A","C4_1549.00A",
+       "Mg2_2795.53A","Mg2_2802.71A","Ne3_3868.76A","Ne3_3967.47A",
+       "N5_1238.82A",
+       "N5_1242.80A","N4_1486.50A","N3_1749.67A","S2_6716.44A","S2_6730.82A"]
+
+        wavelengths=[6562.80, 1304.86, 6300.30, 3728.80, 3726.10, 1660.81, 1666.15,
+                    4363.21, 4958.91, 5006.84, 1640.41, 1335.66,
+                    1906.68, 1908.73, 1549.00, 2795.53, 2802.71, 3868.76,
+                    3967.47, 1238.82, 1242.80, 1486.50, 1749.67, 6716.44, 6730.82]
+
+        viz = galaxy_visualization.VisualizationManager(filename, lines, wavelengths)
+        star_ctr = viz.star_center(self.ad)
+        self.sp = self.data_yt.sphere(star_ctr, (3000, "pc"))
+
+        x1 = self.ad["star", "particle_position_x"].in_units("pc")
+        y1 = self.ad["star", "particle_position_y"].in_units("pc")
+        z1 = self.ad["star", "particle_position_z"].in_units("pc")
+
+        self.center_pc = (np.mean(x1), np.mean(y1), np.mean(z1))
+
+        #back to original stuff
         self.data_format = data_format
         if data_format == "pos":
             self.data_columns = [
@@ -137,7 +172,7 @@ class Galaxy:
         """
         return Grid(self.center, resolution, self.pixel_scale(resolution, zoom_factor))
 
-    def create_image(self, resolution, zoom_factor=1, filter_name="F200W"):
+    def create_image(self, resolution, zoom_factor=1, filter_name="F200W", custom=False):
         """Returns an image of the galaxy as a 2d array of fluxes in Jy.
 
         Parameters
@@ -154,6 +189,30 @@ class Galaxy:
         numpy.ndarray
             image of the galaxy
         """
+        if custom:
+            # direction?
+            # determine field from filter param
+            field = ('deposit','star_sum_lum_'+filter_name)
+            if field not in self.data_yt.field_list + self.data_yt.derived_field_list:
+                if ("star", "lum_"+filter_name) not in self.data_yt.field_list + self.data_yt.derived_field_list:
+                    self.data_yt.add_field(("star","lum_"+filter_name),
+                                           function = self.get_filter_stellar_luminosity(filter_name),
+                                           units = "cm**3", # TODO check if anyone has answered the units question
+                                           sampling_type = "particle",
+                                           force_override = True)
+                self.data_yt.add_deposited_particle_field(
+                    ("star", "lum_" + filter_name), method="sum",
+                )
+            # i'm sure width can be derived from the object but for now i'm copying from the notebook
+            width = (1500,"pc")
+            # same story for data source
+            # same story for center
+            # putting off weight field for now
+            # ensure resolution is valid for yt
+            buff_size = (resolution, resolution)
+            plt = yt.ProjectionPlot(self.data_yt, "z", field, width, self.sp, self.center_pc, buff_size=buff_size)
+            return plt.frb[field].to_ndarray()
+        
         pixel_scale = self.pixel_scale(resolution, zoom_factor)
 
         # convert position to arcseconds
