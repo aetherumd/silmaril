@@ -105,8 +105,8 @@ def test_distribution():
 
 def sample_massive_stars(N, m_particle=10.0):
 
-    m_min = 8
-    m_max = 120
+    m_min = 9
+    m_max = 574
     alpha = -2.35
     mass_frac_in_massive_stars = 3.638945e-01 # the fraction of mass above 8 M_sun for a Chabrier IMF (0.08 M_sun < m < 120 M_sun)
     m_mean_massive_stars = average_mass(m_min, m_max, alpha)
@@ -213,6 +213,7 @@ def do_sample_imf_distribution(imf, m_particle=10.0):
         for n in dist[i*N_per_group:(i+1)*N_per_group]:
             if n == 0:
                 tmp(n)
+                continue
             else:
                 m_sample = sample_powerlaw_imf(m_min, m_max, alpha, n)
                 m_collection.extend(m_sample)
