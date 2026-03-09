@@ -105,8 +105,8 @@ def test_distribution():
 
 def sample_massive_stars(N, m_particle=10.0):
 
-    m_min = 8
-    m_max = 120
+    m_min = 9
+    m_max = 574
     alpha = -2.35
     mass_frac_in_massive_stars = 3.638945e-01 # the fraction of mass above 8 M_sun for a Chabrier IMF (0.08 M_sun < m < 120 M_sun)
     m_mean_massive_stars = average_mass(m_min, m_max, alpha)
@@ -173,3 +173,52 @@ def do_sample(m_particle=10.0):
         print()
     
     print(f"\ntotal mass in sampled massive stars = {np.sum(m_collection)} (should be near {m_particle * mass_frac_in_massive_stars * N})")
+
+def do_sample_imf_distribution(imf, m_particle=10.0):
+
+    # solar mass. this the stellar mass at each position in the simulation
+    m_min = imf.m_min
+    m_max = imf.m_max
+    alpha = imf.alpha
+    mass_frac_in_massive_stars = imf.mass_frac_in_massive_stars
+    m_mean_massive_stars = average_mass(m_min, m_max, alpha)
+    n_average = m_particle * mass_frac_in_massive_stars / m_mean_massive_stars
+
+    N = imf.N
+    dist = random_number_from_poisson(n_average, N)
+    N_per_group = 10
+    N_group = N // N_per_group
+
+    print(f"""
+    Doing a sampling with the following parameters:
+    A total of {N} positions in the simulation, each position has a stellar mass of {m_particle}.
+    mass fraction in massive stars (from {m_min} to {m_max}): {mass_frac_in_massive_stars} (this is just a random number I made up. should depend on the exact IMF).
+    power-law IMF: m_min = {m_min}, m_max = {m_max}, alpha = {alpha}
+    mean mass of massive stars in a sampled population: {m_mean_massive_stars}
+    average number of massive stars at a position: n_average = {n_average}
+    """)
+
+    print(f"Number of stars in each position, a total of {N} positions. This is a Poisson distribution with mean n_average.")
+    for i in range(N_group):
+        print(dist[i*N_per_group:(i+1)*N_per_group])
+    print()
+
+    def tmp(x):
+        print(x, end=' ')
+        return
+
+    print(f"The mass of massive stars sampled:")
+    m_collection = []
+    for i in range(N_group):
+        for n in dist[i*N_per_group:(i+1)*N_per_group]:
+            if n == 0:
+                tmp(n)
+                continue
+            else:
+                m_sample = sample_powerlaw_imf(m_min, m_max, alpha, n)
+                m_collection.extend(m_sample)
+                tmp(m_sample)
+        print()
+    
+    print(f"\ntotal mass in sampled massive stars = {np.sum(m_collection)} (should be near {m_particle * mass_frac_in_massive_stars * N})")
+    return m_collection
