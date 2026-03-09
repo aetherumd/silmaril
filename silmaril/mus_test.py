@@ -8,6 +8,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy import units as u, constants as const
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from scipy.interpolate import griddata
 
 
 def get_filter(filter_name: str = "None"):
@@ -121,11 +122,15 @@ def get_flux(redshift, filter_name):
 
     masses = np.unique(unique_mass).astype(float)
     ages = np.unique(unique_age).astype(float)
-    grid = np.full((len(masses), len(ages)), np.nan)
+    ages = ages[ages > 100000]
+    grid = np.full((len(masses), len(ages)), 0.0)
     print(database[0])
+    print(masses)
     # Map data points to the grid
     i = 0
     for mass, age, value, name in database:
+        if age <= 100000:
+            continue
         mass_matches = np.where(np.isclose(masses, mass, rtol=1e-5))[0]
         age_matches = np.where(np.isclose(ages, age, rtol=1e-5))[0]
         mass_idx = mass_matches[0]
@@ -133,16 +138,28 @@ def get_flux(redshift, filter_name):
         grid[mass_idx, age_idx] = value
         i += 1
     print(i)
-    grid = np.nan_to_num(grid, nan=0.0) #turning all the Nan's to 0.0's
+    #grid = np.nan_to_num(grid, nan=0.0) #turning all the Nan's to 0.0's
     return grid, masses, ages
 
+def fill_out_grid(grid):
+    for row in range(grid.shape[0]):
+        star_values = grid[row]
+        next_value = 0
+        for col in range(len(star_values) - 1, -1, -1): 
+            if star_values[col] != 0:
+                next_value = star_values[col]
+            else:
+                if next_value != 0:
+                    grid[row, col] = next_value
+    return grid
 
 def grid_interpolator(grid, masses, ages, query_point):
+    #querypoint = (mass, age)
     mass_min, mass_max = masses.min(), masses.max()
     age_min, age_max = ages.min(), ages.max()
     
-    print("Mass range:", mass_min, "to", mass_max)
-    print("Age range:", age_min, "to", age_max)
+    #print("Mass range:", mass_min, "to", mass_max)
+    #print("Age range:", age_min, "to", age_max)
     #create the interpolator    
     #interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=np.nan)
     interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=0.0)
@@ -150,8 +167,39 @@ def grid_interpolator(grid, masses, ages, query_point):
     if query_point[0] < mass_min or query_point[0] > mass_max or query_point[1] < age_min or query_point[1] > age_max:
         raise ValueError(f"Query point {query_point} is outside grid bounds.")
     result = interpolator(query_point)
-    print("success")
-    print("Interpolated result:", result)
+    #print("success")
+    #print("Interpolated result:", result)
+    return result
+
+def grid_interp2(grid, masses, ages, query_point):
+    row, col = np.where(~np.isnan(grid))
+    known_masses = masses[row]
+    known_ages   = ages[col]
+    known_vals   = grid[row, col]
+
+
+    M, A = np.meshgrid(masses, ages, indexing='ij')  # same shape as grid
+
+    filled_grid = griddata(
+        points=np.column_stack((known_masses, known_ages)),
+        values=known_vals,
+        xi=np.column_stack((M.flatten(), A.flatten())),
+        method='linear'
+    ).reshape(grid.shape)
+
+def grid_interp3(grid, masses, ages, query_point):
+    #querypoint = (mass, age)
+    row, col = np.where(~np.isnan(grid))
+
+    points = np.column_stack((masses[row], ages[col]))
+    values = grid[row, col]
+
+    return griddata(
+        points=points,
+        values=values,
+        xi=(query_point[0], query_point[1]),
+        method='linear'
+    )
 
 def plot_grid(grid, masses, ages):
     valid_idx = np.where(grid != 0)
@@ -168,7 +216,27 @@ def plot_grid(grid, masses, ages):
     plt.xscale('log')
     plt.xlabel('Age (Log)')
     plt.yscale('log')
-    plt.ylabel('Mass')
+    plt.ylabel('Mass (Log)')
+    plt.title('Age vs Mass Data Points')
+    plt.grid(True)
+    plt.show()
+
+def plot_grid2(grid, masses, ages):
+    valid_idx = np.where(grid != 0)
+    
+    # Flatten everything to make a scatter plot
+    x = masses[valid_idx[0]]  # mass coordinates
+    y = ages[valid_idx[1]]
+    lum = grid[valid_idx]
+
+    # Scatter plot of just mass vs age
+    plt.figure(figsize=(8,6))
+    scatter = plt.scatter(y, lum,c=x,cmap='plasma', norm=LogNorm(), s=30,alpha=0.5)
+    plt.colorbar(scatter, label='ZAMS Mass (Log)')
+    plt.xscale('log')
+    plt.xlabel('Age (Log)')
+    #plt.yscale('log')
+    plt.ylabel('Luminosity (Log)')
     plt.title('Age vs Mass Data Points')
     plt.grid(True)
     plt.show()
@@ -250,3 +318,15 @@ def calc_luminosity(lamda_array, flux_array, filter_name):
     luminosity = integralH / integral_filter
 
     return luminosity
+
+def parse_starburst99():
+    #Column 1 : Time [yr]
+    #Column 2 : Solid Line
+    #Column 3 : Long Dashed Line
+    #Column 4 : Short Dashed Line
+
+    #read starburst99 files from that file
+    #parse luminosities from starburst and add total luminosity from muspelheim
+    #need to redshift the silmaril/muspelheim filter to match teh 1500 A filter that starburst has
+    #get luminosity for certain age and plot to see if plots match
+    pass
