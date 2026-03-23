@@ -11,7 +11,9 @@ from astropy.cosmology import FlatLambdaCDM
 from .utilities import Grid
 from importlib.resources import files
 import scipy
-
+import copy
+from merlin_spectra import galaxy_visualization
+import yt
 
 class Galaxy:
     """Class representing a galaxy defined using particle data
@@ -53,42 +55,43 @@ class Galaxy:
         luminosity distance of the galaxy in pc
     """
 
-    def __init__(self, filename, center, redshift, size, data_format="pos"):
+    def __init__(self, filename, center, redshift, size, data_format="pos", extra = None):
         # load particle data
         self.data = np.loadtxt(filename)
 
         # stuff i had to add to integrate custom images
-        epf = [
-            ("particle_family", "b"),
-            ("particle_tag", "b"),
-            ("particle_birth_epoch", "d"),
-            ("particle_metallicity", "d"),
-        ]
-        self.data_yt = yt.load(filename, epf)
-        self.ad = self.data_yt.all_data()
-        # these might be lines/wavelengths relevant to our specific test case.
-        # in which case this will absolutely not be in the final product
-        lines=["H1_6562.80A","O1_1304.86A","O1_6300.30A","O2_3728.80A","O2_3726.10A",
-       "O3_1660.81A","O3_1666.15A","O3_4363.21A","O3_4958.91A","O3_5006.84A", 
-       "He2_1640.41A","C2_1335.66A","C3_1906.68A","C3_1908.73A","C4_1549.00A",
-       "Mg2_2795.53A","Mg2_2802.71A","Ne3_3868.76A","Ne3_3967.47A",
-       "N5_1238.82A",
-       "N5_1242.80A","N4_1486.50A","N3_1749.67A","S2_6716.44A","S2_6730.82A"]
+        if extra:
+            epf = [
+                ("particle_family", "b"),
+                ("particle_tag", "b"),
+                ("particle_birth_epoch", "d"),
+                ("particle_metallicity", "d"),
+            ]
+            self.data_yt = yt.load(extra, extra_particle_fields = epf)
+            self.ad = self.data_yt.all_data()
+            # these might be lines/wavelengths relevant to our specific test case.
+            # in which case this will absolutely not be in the final product
+            lines=["H1_6562.80A","O1_1304.86A","O1_6300.30A","O2_3728.80A","O2_3726.10A",
+        "O3_1660.81A","O3_1666.15A","O3_4363.21A","O3_4958.91A","O3_5006.84A", 
+        "He2_1640.41A","C2_1335.66A","C3_1906.68A","C3_1908.73A","C4_1549.00A",
+        "Mg2_2795.53A","Mg2_2802.71A","Ne3_3868.76A","Ne3_3967.47A",
+        "N5_1238.82A",
+        "N5_1242.80A","N4_1486.50A","N3_1749.67A","S2_6716.44A","S2_6730.82A"]
 
-        wavelengths=[6562.80, 1304.86, 6300.30, 3728.80, 3726.10, 1660.81, 1666.15,
-                    4363.21, 4958.91, 5006.84, 1640.41, 1335.66,
-                    1906.68, 1908.73, 1549.00, 2795.53, 2802.71, 3868.76,
-                    3967.47, 1238.82, 1242.80, 1486.50, 1749.67, 6716.44, 6730.82]
+            wavelengths=[6562.80, 1304.86, 6300.30, 3728.80, 3726.10, 1660.81, 1666.15,
+                        4363.21, 4958.91, 5006.84, 1640.41, 1335.66,
+                        1906.68, 1908.73, 1549.00, 2795.53, 2802.71, 3868.76,
+                        3967.47, 1238.82, 1242.80, 1486.50, 1749.67, 6716.44, 6730.82]
 
-        viz = galaxy_visualization.VisualizationManager(filename, lines, wavelengths)
-        star_ctr = viz.star_center(self.ad)
-        self.sp = self.data_yt.sphere(star_ctr, (3000, "pc"))
+            viz = galaxy_visualization.VisualizationManager(extra, lines, wavelengths)
+            star_ctr = viz.star_center(self.ad)
+            self.sp = self.data_yt.sphere(star_ctr, (3000, "pc"))
 
-        x1 = self.ad["star", "particle_position_x"].in_units("pc")
-        y1 = self.ad["star", "particle_position_y"].in_units("pc")
-        z1 = self.ad["star", "particle_position_z"].in_units("pc")
+            x1 = self.ad["star", "particle_position_x"].in_units("pc")
+            y1 = self.ad["star", "particle_position_y"].in_units("pc")
+            z1 = self.ad["star", "particle_position_z"].in_units("pc")
 
-        self.center_pc = (np.mean(x1), np.mean(y1), np.mean(z1))
+            self.center_pc = (np.mean(x1), np.mean(y1), np.mean(z1))
 
         #back to original stuff
         self.data_format = data_format
@@ -172,7 +175,7 @@ class Galaxy:
         """
         return Grid(self.center, resolution, self.pixel_scale(resolution, zoom_factor))
 
-    def create_image(self, resolution, zoom_factor=1, filter_name="F200W", custom=False):
+    def create_image(self, resolution, zoom_factor=1, filter_name=None, custom=False):
         """Returns an image of the galaxy as a 2d array of fluxes in Jy.
 
         Parameters
@@ -192,6 +195,8 @@ class Galaxy:
         if custom:
             # direction?
             # determine field from filter param
+            if not filter_name:
+                filter_name = "F200W"
             field = ('deposit','star_sum_lum_'+filter_name)
             if field not in self.data_yt.field_list + self.data_yt.derived_field_list:
                 if ("star", "lum_"+filter_name) not in self.data_yt.field_list + self.data_yt.derived_field_list:
@@ -210,7 +215,7 @@ class Galaxy:
             # putting off weight field for now
             # ensure resolution is valid for yt
             buff_size = (resolution, resolution)
-            plt = yt.ProjectionPlot(self.data_yt, "z", field, width, self.sp, self.center_pc, buff_size=buff_size)
+            plt = yt.ProjectionPlot(self.data_yt, "z", field, buff_size=buff_size)
             return plt.frb[field].to_ndarray()
         
         pixel_scale = self.pixel_scale(resolution, zoom_factor)
@@ -255,7 +260,54 @@ class Galaxy:
 
         return lums.T * zoom_factor
 
-    def plot(self, resolution, norm=None, zoom_factor=1):
+    def get_filter_stellar_luminosity(self, filter_name):
+        """Returns a yt-compatible field function that computes per-star luminosity
+        through the given JWST filter, for use with data_yt.add_field.
+
+        Parameters
+        ----------
+        filter_name : str
+            Name of the JWST filter (e.g. "F200W")
+
+        Returns
+        -------
+        callable
+            yt field function (field, data) -> luminosity array
+        """
+        lum_units = 'cm**3'
+
+        # Register stellar_ages derived field if not already present
+        if ("star", "stellar_ages") not in self.data_yt.derived_field_list:
+            def _age(field, data):
+                time = data.ds.current_time.in_units("Myr")
+                t_birth = [data.ds.quan(i, "code_time").in_units("Myr")
+                           for i in data["star", "particle_birth_epoch"]]
+                return data.ds.arr(time + t_birth, "Myr")
+            self.data_yt.add_field(("star", "stellar_ages"), function=_age,
+                                   units="Myr", sampling_type="particle",
+                                   force_override=True)
+
+        ages = np.array(self.ad["star", "stellar_ages"])
+        unique_ages = np.unique(ages)
+
+        table_file = str(files("silmaril.data").joinpath("fig7e.dat"))
+        lum = {s: lum_lookup_filtered(s, self.redshift, table_file=table_file,
+                                      filter_name=filter_name)
+               for s in unique_ages}
+
+        ret = np.array([lum[a] for a in ages])
+        self.data_yt.index.lum_array = ret
+
+        def _lum(field, data):
+            idx = data["star", "particle_index"].astype(int)
+            out = np.zeros(idx.shape, dtype=float)
+            mask = (idx >= 0) & (idx < len(data.ds.index.lum_array))
+            out[mask] = data.ds.index.lum_array[idx[mask]]
+            return data.ds.arr(out, lum_units)
+
+        return copy.deepcopy(_lum)
+
+    def plot(self, resolution, norm=None, zoom_factor=1, custom=False):
         """Plots the galaxy at a given resolution and zoom factor.
 
         Parameters
@@ -279,7 +331,7 @@ class Galaxy:
 
         fig = plt.figure()
         ax = fig.add_subplot(projection=wcs)
-        im = ax.imshow(self.create_image(resolution, zoom_factor), cmap="inferno", norm=norm)
+        im = ax.imshow(self.create_image(resolution, zoom_factor, filter_name="F200W", custom=custom), cmap="inferno", norm=norm)
         ax.set_facecolor("black")
         ra = ax.coords["ra"]
         ra.set_ticklabel(exclude_overlapping=True)

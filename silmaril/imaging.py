@@ -96,7 +96,7 @@ class Observation:
         background,
         noise,
         source_resolution,
-        filter_name=None,
+        filter_name,
         source_center=(0, 0),
         source_rotation=0,
         zoom_factor=1,
@@ -209,7 +209,7 @@ class Observation:
         source_center=(0, 0),
         source_rotation=0,
         zoom_factor=1,
-        filter_name=None,
+        filter_name="F200W",
         star_by_star=False,
         custom=False
     ):
@@ -315,7 +315,7 @@ class Observation:
         source_center=(0, 0),
         source_rotation=0,
         zoom_factor=1,
-        filter_name=None,
+        filter_name="F200W",
         star_by_star=False,
         norm=None,
         custom = False
