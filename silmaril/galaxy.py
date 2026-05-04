@@ -13,6 +13,7 @@ from importlib.resources import files
 import scipy
 import copy
 from merlin_spectra import emission, galaxy_visualization
+from yt.frontends.ramses.field_handlers import RTFieldFileHandler
 import yt
 
 lines=["H1_6562.80A","O1_1304.86A","O1_6300.30A","O2_3728.80A","O2_3726.10A",
@@ -57,6 +58,33 @@ def get_filter_interpolator(
     # Return CubicSpline interpolator
     return wav_angs, scipy.interpolate.CubicSpline(wav_angs, filter_data[:, 1])
 
+def _my_H_nuclei_density(field, data):
+    dn=data["ramses","Density"].in_cgs()
+    XH_RAMSES=0.76 #defined by RAMSES in cooling_module.f90
+    YHE_RAMSES=0.24 #defined by RAMSES in cooling_module.f90
+    mH_RAMSES=yt.YTArray(1.6600000e-24,"g") #defined by RAMSES in cooling_module.f90
+
+    return dn*XH_RAMSES/mH_RAMSES
+
+def _my_temperature(field, data):
+    #y(i): abundance per hydrogen atom
+    XH_RAMSES=0.76 #defined by RAMSES in cooling_module.f90
+    YHE_RAMSES=0.24 #defined by RAMSES in cooling_module.f90
+    mH_RAMSES=yt.YTArray(1.6600000e-24,"g") #defined by RAMSES in cooling_module.f90
+    kB_RAMSES=yt.YTArray(1.3806200e-16,"erg/K") #defined by RAMSES in cooling_module.f90
+
+    dn=data["ramses","Density"].in_cgs()
+    pr=data["ramses","Pressure"].in_cgs()
+    yHI=data["ramses","xHI"]
+    yHII=data["ramses","xHII"]
+    yHe = YHE_RAMSES*0.25/XH_RAMSES
+    yHeII=data["ramses","xHeII"]*yHe
+    yHeIII=data["ramses","xHeIII"]*yHe
+    yH2=1.-yHI-yHII
+    yel=yHII+yHeII+2*yHeIII
+    mu=(yHI+yHII+2.*yH2 + 4.*yHe) / (yHI+yHII+yH2 + yHe + yel)
+    return pr/dn * mu * mH_RAMSES / kB_RAMSES
+
 class Galaxy:
     """Class representing a galaxy defined using particle data
 
@@ -97,6 +125,51 @@ class Galaxy:
         luminosity distance of the galaxy in pc
     """
 
+    def get_ion_param(self):
+        def _ion_param(field, data):
+            p = RTFieldFileHandler.get_rt_parameters(self.data_yt).copy()
+            p.update(self.data_yt.parameters)
+
+            cgs_c = 2.99792458e10     #light velocity
+
+            # Convert to physical photon number density in cm^-3
+            pd_2 = data['ramses-rt','Photon_density_2']*p["unit_pf"]/cgs_c
+            pd_3 = data['ramses-rt','Photon_density_3']*p["unit_pf"]/cgs_c
+            pd_4 = data['ramses-rt','Photon_density_4']*p["unit_pf"]/cgs_c
+
+            photon = pd_2 + pd_3 + pd_4
+
+            return photon/data['gas', 'number_density']
+        return _ion_param
+    
+    def get_xHI(self):
+        def _xHI(field, data):
+            if 'hydro_xHI' in dir(self.data_yt.fields.ramses): # and \
+                #'xHI' not in dir(ds.fields.ramses):
+                return data['ramses', 'hydro_xHI']
+        return _xHI
+
+    def get_xHII(self):
+        def _xHII(field, data):
+            if 'hydro_xHII' in dir(self.data_yt.fields.ramses): # and \
+                #'xHII' not in dir(ds.fields.ramses):
+                return data['ramses', 'hydro_xHII']
+        return _xHII
+
+    def get_xHeII(self):
+        def _xHeII(field, data):
+            if 'hydro_xHeII' in dir(self.data_yt.fields.ramses): # and \
+                #'xHeII' not in dir(ds.fields.ramses):
+                return data['ramses', 'hydro_xHeII']
+        return _xHeII
+
+    def get_xHeIII(self):
+        def _xHeIII(field, data):
+            if 'hydro_xHeIII' in dir(self.data_yt.fields.ramses): # and \
+                #'xHeIII' not in dir(ds.fields.ramses):
+                return data['ramses', 'hydro_xHeIII']
+        return _xHeIII
+
     def __init__(self, filename, center, redshift, size, data_format="pos", extra = None):
         # load particle data
         self.data = np.loadtxt(filename)
@@ -124,7 +197,66 @@ class Galaxy:
 
             self.center_pc = (np.mean(x1), np.mean(y1), np.mean(z1))
 
-            self.emission_manager = emission.EmissionLineInterpolator(extra, lines)
+            line_list = str(files("merlin_spectra.linelists").joinpath("linelist2.dat")) 
+            self.emission_manager = emission.EmissionLineInterpolator(line_list, lines)
+
+            self.data_yt.add_field(
+                ('gas', 'ion_param'),
+                function=self.get_ion_param(),
+                sampling_type="cell",
+                units="cm**3",
+                force_override=True
+            )
+
+            self.data_yt.add_field(
+                ("gas","my_H_nuclei_density"),
+                function=_my_H_nuclei_density,
+                sampling_type="cell",
+                units="1/cm**3",
+                force_override=True
+            )
+
+            self.data_yt.add_field(
+                ("ramses","xHI"),
+                function=self.get_xHI(),
+                sampling_type="cell",
+                units="1",
+                #force_override=True
+            )
+
+            self.data_yt.add_field(
+                ("ramses","xHII"),
+                function=self.get_xHII(),
+                sampling_type="cell",
+                units="1",
+                #force_override=True
+            )
+
+            self.data_yt.add_field(
+                ("ramses","xHeII"),
+                function=self.get_xHeII(),
+                sampling_type="cell",
+                units="1",
+                #force_override=True
+            )
+
+            self.data_yt.add_field(
+                ("ramses","xHeIII"),
+                function=self.get_xHeIII(),
+                sampling_type="cell",
+                units="1",
+                #force_override=True
+            )
+            self.data_yt.add_field(
+                ("gas","my_temperature"),
+                function=_my_temperature,
+                sampling_type="cell",
+                # TODO units
+                #units="K",
+                #units="K*cm**3/erg",
+                units='K*cm*dyn/erg',
+                force_override=True
+            )
 
         #back to original stuff
         self.data_format = data_format
@@ -265,7 +397,7 @@ class Galaxy:
             # iterate lines and see which are present
             for i, (line, wav) in enumerate(zip(lines,wavelengths)):
                 # check if present in this filter
-                if interp(wav (1+self.redshift)) <= 0:
+                if interp(wav * (1+self.redshift)) <= 0:
                     continue
                 # check if already present
                 if ('gas', 'flux_' + line) in self.data_yt.derived_field_list:
@@ -284,7 +416,7 @@ class Galaxy:
                 self.data_yt.add_field(
                     ("gas", "flux_filter_" +filter_name), #field name
                     function=self.get_filter_flux(filter_name),
-                    units="cm**3",          # adjust if your line luminosities have different units
+                    units="1",          # adjust if your line luminosities have different units
                     sampling_type="cell",
                     force_override=True
                 )
@@ -295,8 +427,8 @@ class Galaxy:
             # putting off weight field for now
             # ensure resolution is valid for yt
             buff_size = (resolution, resolution)
-            plt = yt.ProjectionPlot(self.data_yt, "z", ("gas", "flux_"+filter_name), buff_size=buff_size)
-            gas_flux = plt.frb[("gas","flux_"+filter_name)].to_ndarray()
+            plt = yt.ProjectionPlot(self.data_yt, "z", ("gas", "flux_filter_"+filter_name), buff_size=buff_size)
+            gas_flux = plt.frb[("gas","flux_filter_"+filter_name)].to_ndarray() 
         
         pixel_scale = self.pixel_scale(resolution, zoom_factor)
 
