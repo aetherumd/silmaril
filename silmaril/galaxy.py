@@ -282,7 +282,8 @@ def ang_size(phys_size, redshift):
     cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
     lum_dist = cosmo.luminosity_distance(redshift).value * 1e6
     size_dist = lum_dist / (1 + redshift) ** 2
-    return (phys_size / size_dist) * (2.06e5)
+    angular_size = (phys_size / size_dist) * (2.06e5)
+    return angular_size
 
 
 def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500):
@@ -302,7 +303,8 @@ def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500):
     -------
         Redshifted flux in Jy
     """
-    return 7.5e10 * (pivot_wav / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
+    flux = 7.5e10 * (pivot_wav / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
+    return flux
 
 
 def pivot_wavelength(filter_name, z):

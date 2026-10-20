@@ -77,7 +77,8 @@ class Grid:
         numpy.ndarray
             array of shape (n,n,2)
         """
-        return np.transpose(self.grid, (1, 2, 0))
+        grid_as_2d_array = np.transpose(self.grid, (1, 2, 0))
+        return grid_as_2d_array
 
     def as_list_of_points(self):
         """Flattens the grid into a list of (ra,dec) coordinate pairs.
@@ -87,7 +88,8 @@ class Grid:
         numpy.ndarray
             array of shape (n^2,2)
         """
-        return np.reshape(self.as_2d_array(), (-1, 2))
+        grid_as_list_of_points = np.reshape(self.as_2d_array(), (-1, 2))
+        return grid_as_list_of_points
 
 
 def open_fits(file_name):
@@ -104,7 +106,8 @@ def open_fits(file_name):
     data : numpy.ndarray
         data array
     """
-    return fits.open(file_name)[0].data
+    data = fits.open(file_name)[0].data
+    return data
 
 
 def transform_image(image, pixel_scale, angle=0, center=(0, 0)):
