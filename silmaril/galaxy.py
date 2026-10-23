@@ -174,7 +174,7 @@ class Galaxy:
         # load particle data
         self.data = np.loadtxt(filename)
 
-        # stuff i had to add to integrate custom images
+        # stuff i had to add to integrate include_gas images
         if extra:
             epf = [
                 ("particle_family", "b"),
@@ -184,8 +184,6 @@ class Galaxy:
             ]
             self.data_yt = yt.load(extra, extra_particle_fields = epf)
             self.ad = self.data_yt.all_data()
-            # these might be lines/wavelengths relevant to our specific test case.
-            # in which case this will absolutely not be in the final product
 
             viz = galaxy_visualization.VisualizationManager(extra, lines, wavelengths)
             star_ctr = viz.star_center(self.ad)
@@ -258,7 +256,7 @@ class Galaxy:
                 force_override=True
             )
 
-        #back to original stuff
+        #original __init__ code
         self.data_format = data_format
         if data_format == "pos":
             self.data_columns = [
@@ -367,7 +365,7 @@ class Galaxy:
 
         return copy.deepcopy(_filter_lum)
     
-    def create_image(self, resolution, zoom_factor=1, filter_name=None, custom=False):
+    def create_image(self, resolution, zoom_factor=1, filter_name=None, include_gas=False):
         """Returns an image of the galaxy as a 2d array of fluxes in Jy.
 
         Parameters
@@ -384,7 +382,7 @@ class Galaxy:
         numpy.ndarray
             image of the galaxy
         """
-        if custom:
+        if include_gas:
             filter_file = str(
                 files("silmaril.data.mean_throughputs").joinpath(
                     filter_name + "_mean_system_throughput.txt"
@@ -428,7 +426,7 @@ class Galaxy:
             # ensure resolution is valid for yt
             buff_size = (resolution, resolution)
             plt = yt.ProjectionPlot(self.data_yt, "z", ("gas", "flux_filter_"+filter_name), buff_size=buff_size)
-            return plt.frb[("gas","flux_filter_"+filter_name)].to_ndarray() 
+            gas_flux = plt.frb[("gas","flux_filter_"+filter_name)].to_ndarray() 
         
         pixel_scale = self.pixel_scale(resolution, zoom_factor)
 
@@ -469,12 +467,10 @@ class Galaxy:
                 [-self.angular_size, self.angular_size],
             ],
         )
-        if custom:
-            return (lums.T * zoom_factor) + gas_flux
         return lums.T * zoom_factor
 
 
-    def plot(self, resolution, norm=None, zoom_factor=1, custom=False):
+    def plot(self, resolution, norm=None, zoom_factor=1, include_gas=False):
         """Plots the galaxy at a given resolution and zoom factor.
 
         Parameters
@@ -498,7 +494,7 @@ class Galaxy:
 
         fig = plt.figure()
         ax = fig.add_subplot(projection=wcs)
-        im = ax.imshow(self.create_image(resolution, zoom_factor, filter_name="F200W", custom=custom), cmap="inferno", norm=norm)
+        im = ax.imshow(self.create_image(resolution, zoom_factor, filter_name="F200W", include_gas=include_gas), cmap="inferno", norm=norm)
         ax.set_facecolor("black")
         ra = ax.coords["ra"]
         ra.set_ticklabel(exclude_overlapping=True)

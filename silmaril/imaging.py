@@ -101,7 +101,7 @@ class Observation:
         source_rotation=0,
         zoom_factor=1,
         star_by_star=False,
-        custom = False
+        include_gas = False
     ):
         """Simulates an observation of the lensed galaxy.
 
@@ -139,7 +139,7 @@ class Observation:
             zoom_factor,
             filter_name,
             star_by_star,
-            custom
+            include_gas
         )
         lensed_image = np.zeros((self.detector.num_pix, self.detector.num_pix))
         for i, p in enumerate(nonempty_pixels):
@@ -197,7 +197,7 @@ class Observation:
             source_rotation,
             zoom_factor,
             star_by_star,
-            custom = False
+            include_gas = False
         )
         hdu = fits.PrimaryHDU(lensed_image)
         hdu.header = self.detector.wcs.to_header()
@@ -211,7 +211,7 @@ class Observation:
         zoom_factor=1,
         filter_name="F200W",
         star_by_star=False,
-        custom=False
+        include_gas=False
     ):
         """
         Performs ray tracing and computes luminosities for lensed image.
@@ -292,7 +292,7 @@ class Observation:
 
         else:
             # create source image
-            galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor, filter_name, custom)
+            galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor, filter_name, include_gas)
             galaxy_pixel_scale = self.galaxy.pixel_scale(source_resolution, zoom_factor)
             # rotate source image
             transformed_galaxy_image = transform_image(
@@ -318,7 +318,7 @@ class Observation:
         filter_name="F200W",
         star_by_star=False,
         norm=None,
-        custom = False
+        include_gas = False
     ):
         """Plot the lensed galaxy as seen by the detector.
 
@@ -367,7 +367,7 @@ class Observation:
                 source_rotation,
                 zoom_factor,
                 star_by_star,
-                custom
+                include_gas
             ),
             cmap="gray",
             norm=norm,
