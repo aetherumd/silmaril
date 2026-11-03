@@ -142,6 +142,7 @@ def get_flux(redshift, filter_name):
     return grid, masses, ages
 
 def fill_out_grid(grid):
+    j = 0
     for row in range(grid.shape[0]):
         star_values = grid[row]
         next_value = 0
@@ -151,24 +152,17 @@ def fill_out_grid(grid):
             else:
                 if next_value != 0:
                     grid[row, col] = next_value
+                    j += 1
+    print("filled out numbers is", j)
     return grid
 
-def grid_interpolator(grid, masses, ages, query_point):
+def grid_interpolator(grid, masses, ages, query_points):
     #querypoint = (mass, age)
     mass_min, mass_max = masses.min(), masses.max()
     age_min, age_max = ages.min(), ages.max()
-    
-    #print("Mass range:", mass_min, "to", mass_max)
-    #print("Age range:", age_min, "to", age_max)
-    #create the interpolator    
-    #interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=np.nan)
+
     interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=0.0)
-    #example query point
-    if query_point[0] < mass_min or query_point[0] > mass_max or query_point[1] < age_min or query_point[1] > age_max:
-        raise ValueError(f"Query point {query_point} is outside grid bounds.")
-    result = interpolator(query_point)
-    #print("success")
-    #print("Interpolated result:", result)
+    result = interpolator(query_points)
     return result
 
 def grid_interp2(grid, masses, ages, query_point):
@@ -235,25 +229,23 @@ def plot_grid2(grid, masses, ages):
     plt.colorbar(scatter, label='ZAMS Mass (Log)')
     plt.xscale('log')
     plt.xlabel('Age (Log)')
-    #plt.yscale('log')
+    plt.yscale('log')
     plt.ylabel('Luminosity (Log)')
     plt.title('Age vs Mass Data Points')
     plt.grid(True)
     plt.show()
 
 def mus_tester(redshift, filter_name):
-    database = get_flux(redshift=redshift, filter_name=filter_name)
+    grid, masses, ages = get_flux(redshift=redshift, filter_name=filter_name)
+    grid = fill_out_grid(grid)
     mag_data = []
-    for datum in database:
-        magAB = convert_lum_to_magAB(datum[2], redshift, filter_name)
-        age = datum[1]
-        name = datum[3]
-        mag_data.append((age, magAB, name))
     i = 0
-    for datum in mag_data:
-        if datum[2] == 'data/muspelheim_files/SED_BoOST22_SMC_f250-100.smc_grid_interpolation.txt':
-            print(("Age:", datum[0], "Mag AB:", datum[1]))
-            i += 1
+    print('first')
+    for lum in grid[9]:
+        magAB = convert_lum_to_magAB(lum, redshift, filter_name)
+        mag_data.append(magAB)
+        i += 1
+    return ages, mag_data
 
 
 def convert_lum_to_magAB(luminosity, redshift, filter_name):
@@ -327,6 +319,48 @@ def parse_starburst99():
 
     #read starburst99 files from that file
     #parse luminosities from starburst and add total luminosity from muspelheim
-    #need to redshift the silmaril/muspelheim filter to match teh 1500 A filter that starburst has
+    #need to redshift the silmaril/muspelheim filter to match teh 1500 A/0.15 um filter that starburst has
     #get luminosity for certain age and plot to see if plots match
-    pass
+
+    #also change interp to make sure it takes in vectors and not one point
+    filepath = 'starburst/l1500_inst_e.txt'
+    data = np.loadtxt(os.path.join("data", filepath))
+    time = data[:, 0]
+    lum_logged = data[:, 1]
+    return time, lum_logged
+
+def parse_magAB():
+    filepath = 'muspelheim_files/silmaril/data/muspelheim_files/JWST_NIRCam_ABmag_SED_BoOST22_SMC_f575-100.smc_grid_interpolation.txt'
+    data = np.loadtxt(os.path.join("data", filepath))
+    time = data[:, 0]
+    lum_logged = data[:, 1]
+    return time, lum_logged
+
+def export_lookup_table(grid, masses, ages, filepath="lookup_table.npz"):
+    np.savez(filepath, grid=grid, masses=masses, ages=ages)
+    print(f"Lookup table saved to {filepath}")
+
+
+def load_lookup_table(filepath="lookup_table.npz"):
+    data = np.load(filepath)
+    grid = data["grid"]
+    masses = data["masses"]
+    ages = data["ages"]
+    print(f"Lookup table loaded from {filepath}")
+    return grid, masses, ages
+
+def export_interpolator(grid, masses, ages, filepath="interpolator.npz"):
+    np.savez(filepath, grid=grid, masses=masses, ages=ages)
+    print(f"Interpolator data saved to {filepath}")
+
+
+def load_interpolator(filepath="interpolator.npz"):
+    data = np.load(filepath)
+    grid = data["grid"]
+    masses = data["masses"]
+    ages = data["ages"]
+    interpolator = RegularGridInterpolator(
+        (masses, ages), grid, method='linear', bounds_error=True, fill_value=0.0
+    )
+    print(f"Interpolator loaded from {filepath}")
+    return interpolator

@@ -76,8 +76,8 @@ def random_number_from_poisson(n_average, N):
 def test_distribution():
 
     #------ test power law distribution ------
-    m_min = 1
-    m_max = 200
+    m_min = 9
+    m_max = 574
     alpha = -2.3
     N = 10000
     masses = sample_powerlaw_imf(m_min, m_max, alpha, N)
@@ -105,10 +105,10 @@ def test_distribution():
 
 def sample_massive_stars(N, m_particle=10.0):
 
-    m_min = 8
-    m_max = 120
+    m_min = 10
+    m_max = 574
     alpha = -2.35
-    mass_frac_in_massive_stars = 3.638945e-01 # the fraction of mass above 8 M_sun for a Chabrier IMF (0.08 M_sun < m < 120 M_sun)
+    mass_frac_in_massive_stars = 0.8*3.638945e-01 # the fraction of mass above 8 M_sun for a Chabrier IMF (0.08 M_sun < m < 120 M_sun)
     m_mean_massive_stars = average_mass(m_min, m_max, alpha)
     n_average = m_particle * mass_frac_in_massive_stars / m_mean_massive_stars
 
@@ -119,9 +119,10 @@ def sample_massive_stars(N, m_particle=10.0):
 
     m_collection = []
     for n in dist:
-        if n == 0:
-            m_collection.append(mean_low)
-        else:
+        #if n == 0:
+        #    m_collection.append(mean_low)
+        #else:
+        if n > 0:
             m_sample = sample_powerlaw_imf(m_min, m_max, alpha, n)
             m_collection.append(m_sample[0])
     return np.array(m_collection)
@@ -173,3 +174,29 @@ def do_sample(m_particle=10.0):
         print()
     
     print(f"\ntotal mass in sampled massive stars = {np.sum(m_collection)} (should be near {m_particle * mass_frac_in_massive_stars * N})")
+
+if __name__ == "__main__":
+
+    # test_distribution()
+    # do_sample()
+
+    N=100000
+    res=sample_massive_stars(N,m_particle=10.0)
+    print(res)
+    print("min:", min(res), "max:", max(res))
+    lres=np.log10(np.array(res))
+    y,x_e=np.histogram(lres,bins=50,range=(np.log10(4),np.log10(200)))
+    x_c=(x_e[1:]+x_e[:-1])/2.0
+    plt.plot(x_c,y,'or')
+
+    N=100000
+    res=sample_massive_stars(N,m_particle=10.0)
+    print("min:", min(res), "max:", max(res))
+    lres=np.log10(np.array(res))
+    y,x_e=np.histogram(lres,bins=50,range=(np.log10(4),np.log10(200)))
+    x_c=(x_e[1:]+x_e[:-1])/2.0
+    plt.plot(x_c,y,'og')
+
+    plt.xscale('linear')
+    plt.yscale('log')
+    plt.show()

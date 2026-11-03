@@ -12,7 +12,7 @@ from .utilities import *
 from .galaxy import lum_look_up_table, lum_lookup_filtered, zshifted_flux_jy, ang_size
 from scipy.ndimage import gaussian_filter
 from importlib.resources import files
-
+from mus_test import *
 
 class Detector:
     """Class representing a detector.
