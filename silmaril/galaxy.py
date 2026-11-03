@@ -40,6 +40,8 @@ class Galaxy:
         names of the columns of the particle data
     ages
         array of ages in Myr
+    masses
+        array of masses in solar masses
     positions
         array of (x, y, z) coordinates for particle data
     center
@@ -52,8 +54,7 @@ class Galaxy:
         angular size of the galaxy in arcseconds
     luminosity_distance
         luminosity distance of the galaxy in pc
-    masses
-        array of masses in solar masses
+    
     """
 
     def __init__(self, filename, center, redshift, size, data_format="pos"):
@@ -123,7 +124,8 @@ class Galaxy:
         float
             pixel scale of the image
         """
-        return (2 * self.angular_size) / resolution * zoom_factor
+        pix_scale = (2 * self.angular_size) / resolution * zoom_factor
+        return pix_scale
 
     def grid(self, resolution, zoom_factor=1):
         """Returns a grid of points on the sky at a given resolution and zoom factor.
@@ -239,12 +241,12 @@ class Galaxy:
 
 def lum_to_appmag_ab(lum, lum_dist, redshift):
     """
-    Convert point luminosity to point absolute magnitude as detected
+    Convert point luminosity to point apparent magnitude as detected
 
     Parameters
     ----------
     lum : float
-        luminosity in eg/s/Angstrom
+        luminosity in erg/s/Angstrom
     lum_dist : float
         luminosity distance in pc
     redshift : float
@@ -253,7 +255,7 @@ def lum_to_appmag_ab(lum, lum_dist, redshift):
     Return
     ------
     float
-        absolute magnitude
+        apparent magnitude
     """
     abs_magab = -15.65 - 2.54 * np.log10(lum / 10**39)
     app_magab = abs_magab + 5 * np.log10(lum_dist / 100e9) + 50
@@ -280,7 +282,8 @@ def ang_size(phys_size, redshift):
     cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
     lum_dist = cosmo.luminosity_distance(redshift).value * 1e6
     size_dist = lum_dist / (1 + redshift) ** 2
-    return (phys_size / size_dist) * (2.06e5)
+    angular_size = (phys_size / size_dist) * (2.06e5)
+    return angular_size
 
 
 def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500):
@@ -300,7 +303,8 @@ def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500):
     -------
         Redshifted flux in Jy
     """
-    return 7.5e10 * (pivot_wav / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
+    flux = 7.5e10 * (pivot_wav / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
+    return flux
 
 
 def pivot_wavelength(filter_name, z):
