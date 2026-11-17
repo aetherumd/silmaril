@@ -10,12 +10,17 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from scipy.interpolate import griddata
 
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+
 
 def get_filter(filter_name: str = "None"):
     #str(files("silmaril.data.mean_throughputs").joinpath(filter_name + "_mean_system_throughput.txt"))
+    file_path = os.path.join(DATA_DIR, "mean_throughputs/", filter_name + "_mean_system_throughput.txt")
+    #TODO: delete debug statements
+    #print("the file path is", file_path)
     try:
         filter_data = np.loadtxt(
-            "./data/mean_throughputs/" + filter_name + "_mean_system_throughput.txt", #silmaril/silmaril/data/mean_throughputs/F070W_mean_system_throughput.txt
+            file_path, #silmaril/silmaril/data/mean_throughputs/F070W_mean_system_throughput.txt
             dtype = float,
             skiprows=1,
         )
@@ -28,9 +33,10 @@ def get_filter(filter_name: str = "None"):
 def get_files(directory):
     return [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
 
-def get_flux(redshift, filter_name):
+def get_grid(redshift, filter_name):
     print(os.listdir(os.getcwd()))
-    all_museplheim_files = get_files('data/muspelheim_files')
+    #all_museplheim_files = get_files('data/muspelheim_files')
+    all_museplheim_files = get_files(os.path.join(DATA_DIR, 'muspelheim_files'))
 
     #database will hold a tuple of (zams_mass, current_mass, lambda_values, flux_values) for each trackpoint in each txt file
     #change to be hashmap w key = age : value = tuple of (zams_mass, current_mass, lambda_values, flux_values)
@@ -161,7 +167,9 @@ def grid_interpolator(grid, masses, ages, query_points):
     mass_min, mass_max = masses.min(), masses.max()
     age_min, age_max = ages.min(), ages.max()
 
-    interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=True, fill_value=0.0)
+    #maybe add check for bounds
+
+    interpolator = RegularGridInterpolator((masses, ages), grid, method='linear', bounds_error=False, fill_value=0.0)
     result = interpolator(query_points)
     return result
 
@@ -236,7 +244,7 @@ def plot_grid2(grid, masses, ages):
     plt.show()
 
 def mus_tester(redshift, filter_name):
-    grid, masses, ages = get_flux(redshift=redshift, filter_name=filter_name)
+    grid, masses, ages = get_grid(redshift=redshift, filter_name=filter_name)
     grid = fill_out_grid(grid)
     mag_data = []
     i = 0

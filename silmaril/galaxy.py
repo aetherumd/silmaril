@@ -344,7 +344,8 @@ def lum_lookup_filtered(
     z,
     table_file: str,
     filter_name="F200W",
-    stellar_masses=None,
+    stellar_masses=10,
+    m_gal=1e6,
 ):
     """
     Computes luminosities from galaxy spectrum data using the given filter.
@@ -370,16 +371,6 @@ def lum_lookup_filtered(
         returns the luminosity of the individual stars, default UV luminosity
 
     """
-
-    if stellar_masses is None:
-        stellar_mass = 10
-        m_gal = 1e6
-    else:
-        stellar_mass = np.average(stellar_masses)
-        m_gal = len(stellar_ages)*stellar_mass
-
-    stellar_masses = sample_massive_stars(len(stellar_ages), stellar_mass)
-
     filter_data = np.loadtxt(
         str(
             files("silmaril.data.mean_throughputs").joinpath(
@@ -409,12 +400,13 @@ def lum_lookup_filtered(
 
     lookup = scipy.interpolate.CubicSpline(ages, mean_phot_rate)
 
-    return [lookup(a) * (m / m_gal) for a, m in zip(stellar_ages, stellar_masses)]
+    return lookup(stellar_ages) * (stellar_masses / m_gal)
 
 
 def lum_look_up_table(
     stellar_ages: float,
     stellar_masses=None,
+    ##TODO: Change this absolute path
     table_link: str = os.path.join("..", "starburst", "l1500_inst_e.txt"),
     column_idx: int = 1,
     log=False,

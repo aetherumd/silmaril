@@ -12,7 +12,7 @@ from .utilities import *
 from .galaxy import lum_look_up_table, lum_lookup_filtered, zshifted_flux_jy, ang_size
 from scipy.ndimage import gaussian_filter
 from importlib.resources import files
-from mus_test import *
+from .mus_test import *
 
 class Detector:
     """Class representing a detector.
@@ -273,7 +273,19 @@ class Observation:
                     self.galaxy.luminosity_distance,
                 )
             else:
+                print("using custom star by star lensing")
+                grid, grid_masses, grid_ages = get_grid(redshift=self.galaxy.redshift, filter_name=filter_name)
+                filled_grid = fill_out_grid(grid=grid)
+                masses = np.array(self.galaxy.masses)
+                ages = np.array(self.galaxy.ages) * 1e6
+                query_points = np.column_stack((masses, ages))
+                print(query_points)
                 flux = zshifted_flux_jy(
+                    grid_interpolator(grid=filled_grid, masses=grid_masses, ages=grid_ages, query_points=query_points),
+                    self.galaxy.luminosity_distance,
+                )
+                #flux = grid_interpolator(grid=filled_grid, masses=grid_masses, ages=grid_ages, query_points=query_points)
+                flux1 = zshifted_flux_jy(
                     lum_lookup_filtered(
                         stellar_ages=self.galaxy.ages,
                         z=self.galaxy.redshift,
@@ -282,6 +294,8 @@ class Observation:
                     ),
                     self.galaxy.luminosity_distance,
                 )
+                print("My fluxes:",flux[0], flux[1], flux[2], flux[3],flux[4])
+                print("Old Fluxes:",flux1[0], flux1[1], flux1[2], flux1[3],flux1[4])
             luminosities = traced_luminosities_from_stars(
                 x_viewed, y_viewed, flux, source_grid, self.traced_pixel_corners, nonempty_pixels
             )

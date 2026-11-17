@@ -2,9 +2,10 @@ from mus_test import *
 import matplotlib.pyplot as plt
 from sample_IMF import *
 
-grid, masses, ages = get_flux(9, "F150W")
+grid, masses, ages = get_grid(9, "F150W")
 min_age = min(ages)
 max_age = max(ages)
+print("min and max age:", min_age, max_age)
 filled_grid = fill_out_grid(grid=grid)
 
 timestamps, lum = parse_starburst99()
