@@ -196,7 +196,7 @@ class Galaxy:
 
         return lums.T * zoom_factor
 
-    def plot(self, resolution, norm=None, zoom_factor=1):
+    def plot(self, resolution, norm=None, zoom_factor=1, filter_name="F200W"):
         """Plots the galaxy at a given resolution and zoom factor.
 
         Parameters
@@ -220,7 +220,7 @@ class Galaxy:
 
         fig = plt.figure()
         ax = fig.add_subplot(projection=wcs)
-        im = ax.imshow(self.create_image(resolution, zoom_factor), cmap="inferno", norm=norm)
+        im = ax.imshow(self.create_image(resolution, zoom_factor, filter_name), cmap="bone", norm=norm)
         ax.set_facecolor("black")
         ra = ax.coords["ra"]
         ra.set_ticklabel(exclude_overlapping=True)
@@ -277,7 +277,7 @@ def ang_size(phys_size, redshift):
     return (phys_size / size_dist) * (2.06e5)
 
 
-def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500):
+def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500.0):
     """
     Computes redshifted flux in Jy
 
@@ -288,13 +288,13 @@ def zshifted_flux_jy(lum, lum_dis, pivot_wav=1500):
     lum_dis : float
         luminosity distance
     pivot_wav : float
-        filter pivot wavelength, defaults to 1500
+        filter pivot wavelength, defaults to 1500.0
 
     Returns
     -------
         Redshifted flux in Jy
     """
-    return 7.5e10 * (pivot_wav / 1500) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
+    return 7.5e10 * (pivot_wav / 1500.0) ** 2 * (lum / (4 * np.pi * (lum_dis * 3e18) ** 2))
 
 
 def pivot_wavelength(filter_name, z):
@@ -323,8 +323,8 @@ def pivot_wavelength(filter_name, z):
     )
     wav_angs = filter_data[:, 0] * 1e4 / (1 + z)  # convert microns to angstroms and blueshift
     pivot_wav = np.sqrt(
-        np.trapz(wav_angs * filter_data[:, 1], wav_angs)
-        / np.trapz(filter_data[:, 1] / wav_angs, wav_angs)
+        np.trapezoid(wav_angs * filter_data[:, 1], wav_angs)
+        / np.trapezoid(filter_data[:, 1] / wav_angs, wav_angs)
     )
     return pivot_wav
 
@@ -384,7 +384,7 @@ def lum_lookup_filtered(
 
     for i in range(len(ages)):
         lum = np.interp(wav_angs, starburst[:, 0], starburst[:, i + 1])
-        mean_phot_rate[i] = np.trapz(wav_angs * lum * filter_data[:, 1], wav_angs) / np.trapz(
+        mean_phot_rate[i] = np.trapezoid(wav_angs * lum * filter_data[:, 1], wav_angs) / np.trapezoid(
             wav_angs * filter_data[:, 1], wav_angs
         )
 

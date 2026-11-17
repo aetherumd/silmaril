@@ -101,6 +101,7 @@ class Observation:
         source_rotation=0,
         zoom_factor=1,
         star_by_star=False,
+        src_image=None
     ):
         """Simulates an observation of the lensed galaxy.
 
@@ -138,6 +139,7 @@ class Observation:
             zoom_factor,
             filter_name,
             star_by_star,
+            src_image
         )
         lensed_image = np.zeros((self.detector.num_pix, self.detector.num_pix))
         for i, p in enumerate(nonempty_pixels):
@@ -208,6 +210,7 @@ class Observation:
         zoom_factor=1,
         filter_name=None,
         star_by_star=False,
+        src_image=None
     ):
         """
         Performs ray tracing and computes luminosities for lensed image.
@@ -288,7 +291,10 @@ class Observation:
 
         else:
             # create source image
-            galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor, filter_name)
+            if src_image is None:
+                galaxy_image = self.galaxy.create_image(source_resolution, zoom_factor, filter_name)
+            else:
+                galaxy_image = src_image
             galaxy_pixel_scale = self.galaxy.pixel_scale(source_resolution, zoom_factor)
             # rotate source image
             transformed_galaxy_image = transform_image(
@@ -314,6 +320,7 @@ class Observation:
         filter_name=None,
         star_by_star=False,
         norm=None,
+        src_image=None
     ):
         """Plot the lensed galaxy as seen by the detector.
 
@@ -362,6 +369,7 @@ class Observation:
                 source_rotation,
                 zoom_factor,
                 star_by_star,
+                src_image
             ),
             cmap="gray",
             norm=norm,
